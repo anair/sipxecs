@@ -351,6 +351,8 @@ void RegisterEventServer::generateContent(const UtlString& aorString,
       unsigned long expired =
          (dynamic_cast <UtlInt*>
           (rowp->findValue(&RegistrationDB::gExpiresKey)))->getValue();
+      UtlString* path = dynamic_cast <UtlString*> (rowp->findValue(&RegistrationDB::gPathKey));
+      UtlString* gruu = dynamic_cast <UtlString*> (rowp->findValue(&RegistrationDB::gGruuKey));
 
       content.append("    <contact id=\"");
       // We key the registrations table on identity and contact URI, so
