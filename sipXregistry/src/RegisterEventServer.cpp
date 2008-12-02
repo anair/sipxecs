@@ -353,6 +353,7 @@ void RegisterEventServer::generateContent(const UtlString& aorString,
           (rowp->findValue(&RegistrationDB::gExpiresKey)))->getValue();
       UtlString* path = dynamic_cast <UtlString*> (rowp->findValue(&RegistrationDB::gPathKey));
       UtlString* gruu = dynamic_cast <UtlString*> (rowp->findValue(&RegistrationDB::gGruuKey));
+      UtlString* instanceId = dynamic_cast <UtlString*> (rowp->findValue(&RegistrationDB::gInstanceIdKey));
 
       content.append("    <contact id=\"");
       // We key the registrations table on identity and contact URI, so
@@ -394,6 +395,31 @@ void RegisterEventServer::generateContent(const UtlString& aorString,
          content.append("      <display-name>");
          XmlEscape(content, display_name);
          content.append("</display-name>\r\n");
+      }
+      
+      // Add the path header, gruu and sip instance id info
+
+      if(!(path->isNull()))
+      {
+         content.append("      <unknown-param name=\"path\">");
+         Url tmp(*path);
+         tmp.setUrlType("sip");
+         XmlEscape(content, tmp.toString());
+         content.append("</unknown-param>\r\n");
+      }
+      if(!(instanceId->isNull()))
+      {
+         content.append("      <unknown-param name=\"+sip.instance\">");
+         XmlEscape(content, *instanceId);
+         content.append("</unknown-param>\r\n");
+      }
+      if(!(gruu->isNull()))
+      {
+         content.append("      <gr:pub-gruu uri=\"");
+         Url tmp(*gruu);
+         tmp.setUrlType("sip");
+         XmlEscape(content, tmp.toString());
+         content.append("\"/>\r\n");
       }
 
       content.append("    </contact>\r\n");
