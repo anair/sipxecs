@@ -327,7 +327,7 @@ void ContactSet::notifyEventCallback(const UtlString* dialogHandle,
                      UtlString tmpString (*uri_allocated);
                      // Account for any path headers
                      for (TiXmlNode* unknown_param_node = 0;
-                          (unknown_param_node = contact_node->IterateChildren("unknown-param", 
+                          (unknown_param_node = contact_node->IterateChildren("unknown-param",
                                                                                unknown_param_node));
                           )
                      {
@@ -340,11 +340,11 @@ void ContactSet::notifyEventCallback(const UtlString* dialogHandle,
                            if(!pathVector.isNull())
                            {
                               Url contact_uri(*uri_allocated, TRUE);
-                              
+
                               UtlString existingRouteValue;
                               if ( contact_uri.getHeaderParameter(SIP_ROUTE_FIELD, existingRouteValue))
                               {
-                                 // there is already a Route header parameter in the contact; append it to the 
+                                 // there is already a Route header parameter in the contact; append it to the
                                  // Route derived from the Path vector.
                                  pathVector.append(SIP_MULTIFIELD_SEPARATOR);
                                  pathVector.append(existingRouteValue);
