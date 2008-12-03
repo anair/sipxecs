@@ -351,7 +351,7 @@ void RegisterEventServer::generateContent(const UtlString& aorString,
       unsigned long expired =
          (dynamic_cast <UtlInt*>
           (rowp->findValue(&RegistrationDB::gExpiresKey)))->getValue();
-      UtlString* path = dynamic_cast <UtlString*> (rowp->findValue(&RegistrationDB::gPathKey));
+      UtlString* pathHeader = dynamic_cast <UtlString*> (rowp->findValue(&RegistrationDB::gPathKey));
       UtlString* gruu = dynamic_cast <UtlString*> (rowp->findValue(&RegistrationDB::gGruuKey));
       UtlString* instanceId = dynamic_cast <UtlString*> (rowp->findValue(&RegistrationDB::gInstanceIdKey));
 
@@ -399,25 +399,23 @@ void RegisterEventServer::generateContent(const UtlString& aorString,
       
       // Add the path header, gruu and sip instance id info
 
-      if(!(path->isNull()))
+      if(NULL != pathHeader && !pathHeader->isNull())
       {
          content.append("      <unknown-param name=\"path\">");
-         Url tmp(*path);
-         tmp.setUrlType("sip");
-         XmlEscape(content, tmp.toString());
+         XmlEscape(content, *pathHeader);
          content.append("</unknown-param>\r\n");
       }
-      if(!(instanceId->isNull()))
+      if(NULL == instanceId && !instanceId->isNull())
       {
          content.append("      <unknown-param name=\"+sip.instance\">");
          XmlEscape(content, *instanceId);
          content.append("</unknown-param>\r\n");
       }
-      if(!(gruu->isNull()))
+      if(NULL == gruu && !gruu->isNull())
       {
          content.append("      <gr:pub-gruu uri=\"");
          Url tmp(*gruu);
-         tmp.setUrlType("sip");
+         tmp.setScheme(Url::SipUrlScheme);
          XmlEscape(content, tmp.toString());
          content.append("\"/>\r\n");
       }
