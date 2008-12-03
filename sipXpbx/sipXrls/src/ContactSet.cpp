@@ -297,10 +297,10 @@ void ContactSet::notifyEventCallback(const UtlString* dialogHandle,
 
                UtlString* uri_allocated = new UtlString;
                UtlBoolean check_uri = TRUE;
-               TiXmlNode* pub_gruu = contact_element->FirstChild("gr:pub-gruu");
-               if(pub_gruu)
+               TiXmlNode* pub_gruu_node = contact_element->FirstChild("gr:pub-gruu");
+               if(pub_gruu_node)
                {
-                  TiXmlElement* pub_gruu_element = pub_gruu->ToElement();
+                  TiXmlElement* pub_gruu_element = pub_gruu_node->ToElement();
                   UtlString pub_gruu_uri (pub_gruu_element->Attribute("uri"));
                   if(!pub_gruu_uri.isNull())
                   {
@@ -313,7 +313,7 @@ void ContactSet::notifyEventCallback(const UtlString* dialogHandle,
                         // default to sip uri scheme
                         tmp.setScheme(Url::SipUrlScheme);
                      }
-                     tmp.toString(*uri_allocated);
+                     tmp.getUri(*uri_allocated);
                      check_uri = FALSE;
                   }
                }
@@ -353,9 +353,6 @@ void ContactSet::notifyEventCallback(const UtlString* dialogHandle,
                               contact_uri.removeAngleBrackets();
                               contact_uri.getUri(*uri_allocated);
                            }
-
-                           OsSysLog::add(FAC_RLS, PRI_ERR,
-                                            "SubscriptionSet::addInstance ARJUN '%s'  -- '%s'", uri_allocated->data(), tmpString.data());
                         }
                      }
                   }
