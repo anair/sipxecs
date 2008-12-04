@@ -35,6 +35,7 @@ class ResourceListServerTest : public CppUnit::TestCase
    CPPUNIT_TEST(SubscribeWithEventListSupportAcceptedTest);
    CPPUNIT_TEST(SubscribeWithoutEventListSupportRejectedTest);
    CPPUNIT_TEST(SubscribeNothingSupportedRejectedTest);
+   CPPUNIT_TEST(ContactSetTest);
    CPPUNIT_TEST_SUITE_END();
 
 private:
@@ -408,6 +409,64 @@ public:
       ASSERT_STR_EQUAL( "eventlist", pRequireFieldValue );
 
       freeAllTestFixtures();
+   }
+
+   void ContactSetTest()
+   {
+      UtlString credentialDbName = "credential1" ;
+      UtlString subscriptionDbName = "subscription1";
+      UtlString resourceListFile = "resource-lists1.xml";
+
+      mCredentialDbName = credentialDbName;
+      // force copy of input files into the 'work' directory
+      sipDbContext.inputFile( subscriptionDbName + ".xml" );
+      sipDbContext.inputFile( credentialDbName + ".xml" );
+      UtlString tempResourceListFile = UtlString(TEST_DATA_DIR) + "/" + resourceListFile;
+
+      pSipUserAgent = new SipUserAgent( 45141, 45141, 45142
+                                             ,"127.0.0.1"  // default publicAddress
+                                             ,NULL         // default defaultUser
+                                             ,"127.0.0.1"  // default defaultSipAddress
+                                             ,"127.0.0.1:45140" ); // Rls Server
+
+      pSipUserAgent->allowMethod(SIP_SUBSCRIBE_METHOD, true);
+      
+      pResourceServerUnderTest = new ResourceListServer(
+                                       "127.0.0.1:45141", // domain 
+                                       "rlstest.test", // realm
+                                       NULL, 
+                                       DIALOG_EVENT_TYPE, 
+                                       DIALOG_EVENT_CONTENT_TYPE,
+                                       45140, // TCP port
+                                       45140, // UDP port
+                                       45140, // TLS port
+                                       "127.0.0.1", // Bind IP address
+                                       &tempResourceListFile,
+                                       (24 * 60 * 60), // Default subscription refresh interval
+                                       (60 * 60), // Default subscription resubscribe interval.
+                                       (40 * 60), // Default minimum subscription resubscribe interval.
+                                       250,  // publishing delay? 
+                                       20,   // The maximum number of reg subscriptions per resource.
+                                       20,   // The maximum number of contacts per reg subscription.
+                                       20,   // The maximum number of resource instances per contact
+                                       20,    // The maximum number of dialogs per resource instance
+                                       subscriptionDbName,
+                                       credentialDbName );
+   
+      pUacOutputProcessor = new OutputProcessorFixture();
+      pUasOutputProcessor = new OutputProcessorFixture();
+      
+      pResourceServerUnderTest->mClientUserAgent.addSipOutputProcessor( pUacOutputProcessor );
+      pResourceServerUnderTest->mServerUserAgent.addSipOutputProcessor( pUasOutputProcessor );
+
+      // receive the reg-info subscribe 
+      SipMessage request;
+      CPPUNIT_ASSERT( getNextMessageFromRlsClientUnderTest( request, 5 ) );
+      CPPUNIT_ASSERT( !request.isResponse() );
+      UtlString method;
+      request.getRequestMethod(&method);
+      printf("Request URI = %s \n", method.data());
+      CPPUNIT_ASSERT( 0 == method.compareTo(SIP_SUBSCRIBE_METHOD) );
    }
 
 };
