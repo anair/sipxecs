@@ -72,11 +72,17 @@ public:
                                     //< is used to select which of the files in .../sipXrls/src/test/rlsdata/
                                     //< will get used to preload the subscription IMDB.  The name provided here is the 
                                     //< xml file in .../sipXrls/src/test/rlsdata/ without the ".xml" extension.
-                                    UtlString credentialDbName 
+                                    UtlString credentialDbName,
                                     //< Specifies the credential DB to use for the test.  The name 
                                     //< is used to select which of the files in .../sipXrls/src/test/rlsdata/
                                     //< will get used to preload the credential IMDB.  The name provided here is the 
                                     //< xml file in .../sipXrls/src/test/rlsdata/ without the ".xml" extension.
+                                    UtlString domianName,
+                                    //< Specify the domain name to use for the test
+                                    UtlBoolean routeAllRequestsToRlsServer
+                                    //< Send all requests to either the RLS Server UA or the RLS Client UA
+                                    //< The Client UA typically deals with the outgoing subscriptions and
+                                    //< the Server UA deals witht the incoming subscriptions
                                     )
    {
       mCredentialDbName = credentialDbName;
@@ -84,9 +90,9 @@ public:
       sipDbContext.inputFile( subscriptionDbName + ".xml" );
       sipDbContext.inputFile( credentialDbName + ".xml" );
       UtlString tempResourceListFile = UtlString(TEST_DATA_DIR) + "/" + resourceListFile;
-      
+
       pResourceServerUnderTest = new ResourceListServer(
-                                       "rlstest.test", // domain 
+                                       domianName, // domain 
                                        "rlstest.test", // realm
                                        NULL, 
                                        DIALOG_EVENT_TYPE, 
@@ -106,18 +112,30 @@ public:
                                        20,    // The maximum number of dialogs per resource instance
                                        subscriptionDbName,
                                        credentialDbName );
-   
+
       pUacOutputProcessor = new OutputProcessorFixture();
       pUasOutputProcessor = new OutputProcessorFixture();
       
       pResourceServerUnderTest->mClientUserAgent.addSipOutputProcessor( pUacOutputProcessor );
       pResourceServerUnderTest->mServerUserAgent.addSipOutputProcessor( pUasOutputProcessor );
- 
+
+      UtlString proxyAddress;
+      if(routeAllRequestsToRlsServer)
+      {
+         proxyAddress = "127.0.0.1:45140";
+      }
+      else
+      {
+         int pPort;
+         pResourceServerUnderTest->mClientUserAgent.getLocalAddress(&proxyAddress, &pPort);
+         proxyAddress.append(':');
+         proxyAddress.appendNumber(pPort);
+      }
       pSipUserAgent = new SipUserAgent( 45141, 45141, 45142
                                        ,"127.0.0.1"  // default publicAddress
                                        ,NULL         // default defaultUser
                                        ,"127.0.0.1"  // default defaultSipAddress
-                                       ,"127.0.0.1:45140" ); // Rls Server
+                                       ,proxyAddress ); // Proxy address
    }
    
    // The freeAllTestFixtures() has to be called for every call to instantiateAllTestFixtures()
@@ -136,7 +154,7 @@ public:
       
       delete pUasOutputProcessor;
       pUasOutputProcessor = 0;
-      
+
       delete pSipUserAgent;
    }   
    
@@ -151,7 +169,7 @@ public:
    bool getNextMessageFromRlsServerUnderTest( SipMessage& message, int timeoutInSecs )
    {
       bool result = false;
-      if( pUasOutputProcessor->waitForMessages( 1, timeoutInSecs ) == true )
+      if( pUasOutputProcessor->waitForMessage((long) timeoutInSecs ) == true )
       {
          CallbackTrace trace;
          result = pUasOutputProcessor->popNextCallbackTrace( trace );
@@ -168,7 +186,7 @@ public:
    bool getNextMessageFromRlsClientUnderTest( SipMessage& message, int timeoutInSecs )
    {
       bool result = false;
-      if( pUacOutputProcessor->waitForMessages( 1, timeoutInSecs ) == true )
+      if( pUacOutputProcessor->waitForMessage((long) timeoutInSecs ) == true )
       {
          CallbackTrace trace;
          result = pUacOutputProcessor->popNextCallbackTrace( trace );
@@ -276,7 +294,11 @@ public:
    
    void SubscribeWithEventListSupportAcceptedTest()
    {
-      instantiateAllTestFixtures( "resource-lists1.xml", "subscription1", "credential1" );
+      instantiateAllTestFixtures( "resource-lists1.xml", 
+                                  "subscription1", 
+                                  "credential1", 
+                                  "rlstest.test",
+                                  TRUE);
 
       const char* message = 
          "SUBSCRIBE sip:~~rl~F~331@177.0.0.1:54140 SIP/2.0\r\n"
@@ -320,7 +342,11 @@ public:
 
    void SubscribeWithoutEventListSupportRejectedTest()
    {
-      instantiateAllTestFixtures( "resource-lists1.xml", "subscription1", "credential1" );
+      instantiateAllTestFixtures( "resource-lists1.xml", 
+                                  "subscription1", 
+                                  "credential1", 
+                                  "rlstest.test",
+                                  TRUE);
 
       const char* message = 
          "SUBSCRIBE sip:~~rl~F~331@177.0.0.1:54140 SIP/2.0\r\n"
@@ -367,7 +393,11 @@ public:
 
    void SubscribeNothingSupportedRejectedTest()
    {
-      instantiateAllTestFixtures( "resource-lists1.xml", "subscription1", "credential1" );
+      instantiateAllTestFixtures( "resource-lists1.xml", 
+                                  "subscription1", 
+                                  "credential1", 
+                                  "rlstest.test",
+                                  TRUE);
 
       const char* message = 
          "SUBSCRIBE sip:~~rl~F~331@177.0.0.1:54140 SIP/2.0\r\n"
@@ -413,60 +443,76 @@ public:
 
    void ContactSetTest()
    {
-      UtlString credentialDbName = "credential1" ;
-      UtlString subscriptionDbName = "subscription1";
-      UtlString resourceListFile = "resource-lists1.xml";
-
-      mCredentialDbName = credentialDbName;
-      // force copy of input files into the 'work' directory
-      sipDbContext.inputFile( subscriptionDbName + ".xml" );
-      sipDbContext.inputFile( credentialDbName + ".xml" );
-      UtlString tempResourceListFile = UtlString(TEST_DATA_DIR) + "/" + resourceListFile;
-
-      pSipUserAgent = new SipUserAgent( 45141, 45141, 45142
-                                             ,"127.0.0.1"  // default publicAddress
-                                             ,NULL         // default defaultUser
-                                             ,"127.0.0.1"  // default defaultSipAddress
-                                             ,"127.0.0.1:45140" ); // Rls Server
-
-      pSipUserAgent->allowMethod(SIP_SUBSCRIBE_METHOD, true);
-      
-      pResourceServerUnderTest = new ResourceListServer(
-                                       "127.0.0.1:45141", // domain 
-                                       "rlstest.test", // realm
-                                       NULL, 
-                                       DIALOG_EVENT_TYPE, 
-                                       DIALOG_EVENT_CONTENT_TYPE,
-                                       45140, // TCP port
-                                       45140, // UDP port
-                                       45140, // TLS port
-                                       "127.0.0.1", // Bind IP address
-                                       &tempResourceListFile,
-                                       (24 * 60 * 60), // Default subscription refresh interval
-                                       (60 * 60), // Default subscription resubscribe interval.
-                                       (40 * 60), // Default minimum subscription resubscribe interval.
-                                       250,  // publishing delay? 
-                                       20,   // The maximum number of reg subscriptions per resource.
-                                       20,   // The maximum number of contacts per reg subscription.
-                                       20,   // The maximum number of resource instances per contact
-                                       20,    // The maximum number of dialogs per resource instance
-                                       subscriptionDbName,
-                                       credentialDbName );
-   
-      pUacOutputProcessor = new OutputProcessorFixture();
-      pUasOutputProcessor = new OutputProcessorFixture();
-      
-      pResourceServerUnderTest->mClientUserAgent.addSipOutputProcessor( pUacOutputProcessor );
-      pResourceServerUnderTest->mServerUserAgent.addSipOutputProcessor( pUasOutputProcessor );
-
+      instantiateAllTestFixtures( "resource-lists2.xml", 
+                                  "subscription1", 
+                                  "credential1", 
+                                  "sip:127.0.0.1:45141",
+                                  FALSE);
       // receive the reg-info subscribe 
       SipMessage request;
-      CPPUNIT_ASSERT( getNextMessageFromRlsClientUnderTest( request, 5 ) );
-      CPPUNIT_ASSERT( !request.isResponse() );
-      UtlString method;
-      request.getRequestMethod(&method);
-      printf("Request URI = %s \n", method.data());
-      CPPUNIT_ASSERT( 0 == method.compareTo(SIP_SUBSCRIBE_METHOD) );
+      while(getNextMessageFromRlsClientUnderTest( request, 5 ) )
+      {
+         if( !request.isResponse() )
+         {
+            UtlString method;
+            request.getRequestMethod(&method);
+            CPPUNIT_ASSERT( 0 == method.compareTo(SIP_SUBSCRIBE_METHOD) );
+
+            SipMessage regResponse;
+            regResponse.setResponseData(&request, 202, "Accepted", "sip:127.0.0.1:45141");
+            SipMessage * dispatchedMessage = new SipMessage(regResponse);            
+            pResourceServerUnderTest->mClientUserAgent.dispatch(dispatchedMessage);
+
+            UtlString eventField;
+            if(request.getEventField(eventField) &&
+               0 == eventField.compareTo("reg"))
+            {
+               UtlString contactInfo;
+               request.getContactUri(0, &contactInfo);
+               UtlString callid;
+               request.getCallIdField(&callid);
+               int cseq;
+               request.getCSeqField(&cseq, NULL);
+
+               Url toField;
+               regResponse.getToUrl(toField);
+               
+               SipMessage regNotify;
+               regNotify.setNotifyData(&request, 1, "", "", "reg");
+               UtlString regInfo ("<?xml version=\"1.0\"?>\r\n"
+                                  "<reginfo xmlns=\"urn:ietf:params:xml:ns:reg\" version=\"911\" state=\"full\">\r\n"
+                                  "   <registration aor=\"sip:332@rlstest.test\" id=\"sip:332@rlstest.test\" state=\"active\">\r\n "
+                                  "      <contact id=\"sip:332@rlstest.test@@&lt;");
+               regInfo.append(contactInfo);
+               regInfo.append("&gt;\" state=\"active\" event=\"registered\" q=\"1\" callid=\"");
+               regInfo.append(callid);
+               regInfo.append("\" cseq=\"");
+               regInfo.appendNumber(cseq);
+               regInfo.append("\">\r\n"
+                              "         <uri>sip:user@example.com</uri>\r\n"
+                              "         <unknown-param name=path>sip:my.path.com</unknown-param>\r\n" 
+                              "         <gr:pub-gruu uri=\"sip:~~gr~hha9s8d-999@127.0.0.1:45141\"/>\r\n"
+                              "      </contact>\r\n"
+                              "   </registration>\r\n"
+                              "</reginfo>");
+               HttpBody * newBody = new HttpBody (regInfo, strlen(regInfo), "application/reginfo+xml");
+               regNotify.setContentType("application/reginfo+xml");
+               regNotify.setBody(newBody);
+               regNotify.setRawFromField(toField.toString().data());
+               CPPUNIT_ASSERT(sendToRlsServerUnderTest( regNotify ) );
+            }
+            else if( 1==0)
+            {
+               SipMessage regNotify;
+               UtlString route;
+               request.getContactUri(0, &route);
+               regNotify.setNotifyData(&request, 1, route.data(), "", "dialog");
+               CPPUNIT_ASSERT(sendToRlsServerUnderTest( regNotify ) );
+            }
+         }
+      }
+      
+      freeAllTestFixtures();
    }
 
 };
