@@ -35,7 +35,13 @@ class ResourceListServerTest : public CppUnit::TestCase
    CPPUNIT_TEST(SubscribeWithEventListSupportAcceptedTest);
    CPPUNIT_TEST(SubscribeWithoutEventListSupportRejectedTest);
    CPPUNIT_TEST(SubscribeNothingSupportedRejectedTest);
-   CPPUNIT_TEST(ContactSetTest);
+   CPPUNIT_TEST(regInfoSubscribeWithGruuAddressTest);
+   CPPUNIT_TEST(regInfoSubscribeWithBadlyFormattedGruuTest);
+   CPPUNIT_TEST(regInfoSubscribeWithPathHeaderTest);
+   CPPUNIT_TEST(regInfoSubscribeWithJustUriTest);
+   CPPUNIT_TEST(regInfoSubscribeWithMultiplePathHeadersTest);
+   CPPUNIT_TEST(regInfoSubscribeWithMultiplePathHeaderElementsTest);
+   
    CPPUNIT_TEST_SUITE_END();
 
 private:
@@ -142,7 +148,7 @@ public:
    // after a test case is completed.
    void freeAllTestFixtures()
    {
-      pResourceServerUnderTest->mClientUserAgent.removeSipOutputProcessor( pUacOutputProcessor );      
+      pResourceServerUnderTest->mClientUserAgent.removeSipOutputProcessor( pUacOutputProcessor );     
       pResourceServerUnderTest->mServerUserAgent.removeSipOutputProcessor( pUasOutputProcessor );
 
       pResourceServerUnderTest->shutdown();
@@ -274,6 +280,96 @@ public:
       }
       return result;
    }
+
+   /// wrapper function for all reg-info event tests
+   bool ContactSetTest(UtlString regContactxml, UtlString requestUri, UtlString route)
+   {
+      bool ret = FALSE;
+      instantiateAllTestFixtures( "resource-lists2.xml", 
+                                  "subscription1", 
+                                  "credential1", 
+                                  "sip:127.0.0.1:45141",
+                                  FALSE);
+
+      // Stop SipUserAgent from rejecting all SUBSCRIBEs
+      pSipUserAgent->allowMethod(SIP_SUBSCRIBE_METHOD, true);
+
+      // receive the reg-info subscribe 
+      SipMessage request;
+      while(getNextMessageFromRlsClientUnderTest( request, 3 ) )
+      {
+         UtlString method;
+         request.getRequestMethod(&method);
+         if(!request.isResponse() &&
+            0 == method.compareTo(SIP_SUBSCRIBE_METHOD) )
+         {
+            // Accept the Subscription, regardless of whether it for a 'dialog' or 'reg' event
+            // inorder to stop all the retransmissions
+            SipMessage regResponse;
+            regResponse.setResponseData(&request, 202, "Accepted", "sip:127.0.0.1:45141");
+            SipMessage * dispatchedMessage = new SipMessage(regResponse);            
+            pResourceServerUnderTest->mClientUserAgent.dispatch(dispatchedMessage);
+
+            // Deal with the two events separately
+            UtlString eventField;
+            request.getEventField(eventField);
+            if(0 == eventField.compareTo("reg"))
+            {
+               UtlString contactInfo;
+               request.getContactUri(0, &contactInfo);
+               UtlString callid;
+               request.getCallIdField(&callid);
+               int cseq;
+               request.getCSeqField(&cseq, NULL);
+
+               Url toField;
+               regResponse.getToUrl(toField);
+               
+               SipMessage regNotify;
+               regNotify.setNotifyData(&request, 1, "", "", "reg");
+               UtlString regInfo ("<?xml version=\"1.0\"?>\r\n"
+                                 "<reginfo xmlns=\"urn:ietf:params:xml:ns:reginfo\" "
+                                 "xmlns:gr=\"urn:ietf:params:xml:ns:gruuinfo\" version=\"911\" state=\"full\">\r\n"
+                                 "   <registration aor=\"sip:332@rlstest.test\" id=\"sip:332@rlstest.test\" state=\"active\">\r\n "
+                                 "      <contact id=\"sip:332@rlstest.test@@&lt;");
+               regInfo.append(contactInfo);
+               regInfo.append("&gt;\" state=\"active\" event=\"registered\" q=\"1\" callid=\"");
+               regInfo.append(callid);
+               regInfo.append("\" cseq=\"");
+               regInfo.appendNumber(cseq);
+               regInfo.append("\">\r\n");
+               regInfo.append(regContactxml);
+               regInfo.append("      </contact>\r\n"
+                              "   </registration>\r\n"
+                              "</reginfo>");
+               HttpBody * newBody = new HttpBody (regInfo, strlen(regInfo), "application/reginfo+xml");
+               regNotify.setContentType("application/reginfo+xml");
+               regNotify.setBody(newBody);
+               regNotify.setRawFromField(toField.toString().data());
+               sendToRlsServerUnderTest( regNotify );
+            }
+            else if(0 == eventField.compareTo("dialog"))
+            {
+               // If we find a dialog event subscription with the request uri and route
+               // that we are looking for, mark the test as passed
+
+               UtlString uri;
+               UtlString myRoute;
+               request.getRequestUri(&uri);
+               request.getRouteField(&myRoute); 
+
+               if(0 == uri.compareTo(requestUri) &&
+                  0 == route.compareTo(myRoute))
+               {
+                  ret = true;
+               }
+            }
+         }
+      }
+      freeAllTestFixtures();
+      return ret;
+   }
+
    //____________________________________________________
    // || || || || || || || || || || || || || || || || || 
    // \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ 
@@ -283,7 +379,9 @@ public:
    // {
    //     instantiateAllTestFixtures( <resource list xml file to be used by Rls Server for test case>,
    //                                 <name of subscription DB to be used by Rls Server for test case>,
-   //                                 <name of credential DB to be used by Rls Server for test case> 
+   //                                 <name of credential DB to be used by Rls Server for test case>,
+   //                                 <domain name to be used for the test case>,
+   //                                 <should requests be sent to the SERVER or CLIENT UA>
    //                               );
    //     ...
    //     <add test case code here>
@@ -441,78 +539,61 @@ public:
       freeAllTestFixtures();
    }
 
-   void ContactSetTest()
+   void regInfoSubscribeWithGruuAddressTest()
    {
-      instantiateAllTestFixtures( "resource-lists2.xml", 
-                                  "subscription1", 
-                                  "credential1", 
-                                  "sip:127.0.0.1:45141",
-                                  FALSE);
-      // receive the reg-info subscribe 
-      SipMessage request;
-      while(getNextMessageFromRlsClientUnderTest( request, 5 ) )
-      {
-         if( !request.isResponse() )
-         {
-            UtlString method;
-            request.getRequestMethod(&method);
-            CPPUNIT_ASSERT( 0 == method.compareTo(SIP_SUBSCRIBE_METHOD) );
+      UtlString regContactxml ("         <uri>sip:user@127.0.0.1:45141</uri>\r\n"
+                               "         <unknown-param name=\"path\">&lt;sip:127.0.0.1:45141&gt;</unknown-param>\r\n"
+                               "         <unknown-param name=\"+sip.instance\">\"&lt;urn:uuid:f81d4fae"
+                               "-7dec-11d0-a765-00a0c91e6bf6&gt;\"</unknown-param>\r\n"
+                               "         <gr:pub-gruu uri=\"sip:~~gr~hha9s8d-999@127.0.0.1:45141\"/>\r\n");
 
-            SipMessage regResponse;
-            regResponse.setResponseData(&request, 202, "Accepted", "sip:127.0.0.1:45141");
-            SipMessage * dispatchedMessage = new SipMessage(regResponse);            
-            pResourceServerUnderTest->mClientUserAgent.dispatch(dispatchedMessage);
+      CPPUNIT_ASSERT(ContactSetTest(regContactxml, "sip:~~gr~hha9s8d-999@127.0.0.1:45141", ""));
+   }
 
-            UtlString eventField;
-            if(request.getEventField(eventField) &&
-               0 == eventField.compareTo("reg"))
-            {
-               UtlString contactInfo;
-               request.getContactUri(0, &contactInfo);
-               UtlString callid;
-               request.getCallIdField(&callid);
-               int cseq;
-               request.getCSeqField(&cseq, NULL);
+   void regInfoSubscribeWithBadlyFormattedGruuTest()
+   {
+      UtlString regContactxml ("         <uri>sip:user@127.0.0.1:45141</uri>\r\n"
+                               "         <unknown-param name=\"path\">&lt;sip:127.0.0.1:45141&gt;</unknown-param>\r\n"
+                               "         <unknown-param name=\"+sip.instance\">\"&lt;urn:uuid:f81d4fae"
+                               "-7dec-11d0-a765-00a0c91e6bf6&gt;\"</unknown-param>\r\n"
+                               "         <gr:pub-gruu uri=\"~~gr~hha9s8d-999@127.0.0.1:45141\"/>\r\n");
 
-               Url toField;
-               regResponse.getToUrl(toField);
-               
-               SipMessage regNotify;
-               regNotify.setNotifyData(&request, 1, "", "", "reg");
-               UtlString regInfo ("<?xml version=\"1.0\"?>\r\n"
-                                  "<reginfo xmlns=\"urn:ietf:params:xml:ns:reg\" version=\"911\" state=\"full\">\r\n"
-                                  "   <registration aor=\"sip:332@rlstest.test\" id=\"sip:332@rlstest.test\" state=\"active\">\r\n "
-                                  "      <contact id=\"sip:332@rlstest.test@@&lt;");
-               regInfo.append(contactInfo);
-               regInfo.append("&gt;\" state=\"active\" event=\"registered\" q=\"1\" callid=\"");
-               regInfo.append(callid);
-               regInfo.append("\" cseq=\"");
-               regInfo.appendNumber(cseq);
-               regInfo.append("\">\r\n"
-                              "         <uri>sip:user@example.com</uri>\r\n"
-                              "         <unknown-param name=path>sip:my.path.com</unknown-param>\r\n" 
-                              "         <gr:pub-gruu uri=\"sip:~~gr~hha9s8d-999@127.0.0.1:45141\"/>\r\n"
-                              "      </contact>\r\n"
-                              "   </registration>\r\n"
-                              "</reginfo>");
-               HttpBody * newBody = new HttpBody (regInfo, strlen(regInfo), "application/reginfo+xml");
-               regNotify.setContentType("application/reginfo+xml");
-               regNotify.setBody(newBody);
-               regNotify.setRawFromField(toField.toString().data());
-               CPPUNIT_ASSERT(sendToRlsServerUnderTest( regNotify ) );
-            }
-            else if( 1==0)
-            {
-               SipMessage regNotify;
-               UtlString route;
-               request.getContactUri(0, &route);
-               regNotify.setNotifyData(&request, 1, route.data(), "", "dialog");
-               CPPUNIT_ASSERT(sendToRlsServerUnderTest( regNotify ) );
-            }
-         }
-      }
-      
-      freeAllTestFixtures();
+      CPPUNIT_ASSERT(ContactSetTest(regContactxml, "sip:~~gr~hha9s8d-999@127.0.0.1:45141", ""));
+   }
+
+   void regInfoSubscribeWithPathHeaderTest()
+   {
+      UtlString regContactxml ("         <uri>sip:user@127.0.0.1:45141</uri>\r\n"
+                               "         <unknown-param name=\"path\">&lt;sip:127.0.0.1:45141&gt;</unknown-param>\r\n");
+
+      CPPUNIT_ASSERT(ContactSetTest(regContactxml, "sip:user@127.0.0.1:45141", "<sip:127.0.0.1:45141;lr>"));
+   }
+
+   void regInfoSubscribeWithJustUriTest()
+   {
+      UtlString regContactxml ("         <uri>sip:user@127.0.0.1:45141</uri>\r\n"
+                               "         <unknown-param name=\"+sip.instance\">\"&lt;urn:uuid:f81d4fae"
+                                                              "-7dec-11d0-a765-00a0c91e6bf6&gt;\"</unknown-param>\r\n");
+      CPPUNIT_ASSERT(ContactSetTest(regContactxml, "sip:user@127.0.0.1:45141", ""));
+   }
+
+   void regInfoSubscribeWithMultiplePathHeadersTest()
+   {
+      UtlString regContactxml ("         <uri>sip:user@127.0.0.1:45141</uri>\r\n"
+                               "         <unknown-param name=\"path\">&lt;sip:127.0.0.1:45141&gt;,&lt;sip:127.0.0.1:45142&gt;</unknown-param>\r\n");
+
+      CPPUNIT_ASSERT(ContactSetTest(regContactxml, "sip:user@127.0.0.1:45141", "<sip:127.0.0.1:45141;lr>,<sip:127.0.0.1:45142;lr>"));
+   }
+
+   void regInfoSubscribeWithMultiplePathHeaderElementsTest()
+   {
+      UtlString regContactxml ("         <uri>sip:user@127.0.0.1:45141</uri>\r\n"
+                               "         <unknown-param name=\"path\">&lt;sip:127.0.0.1:45142&gt;</unknown-param>\r\n"
+                               "         <unknown-param name=\"path\">&lt;sip:127.0.0.1:45141&gt;</unknown-param>\r\n"
+                               "         <unknown-param name=\"+sip.instance\">\"&lt;urn:uuid:f81d4fae"
+                               "-7dec-11d0-a765-00a0c91e6bf6&gt;\"</unknown-param>\r\n");
+
+      CPPUNIT_ASSERT(ContactSetTest(regContactxml, "sip:user@127.0.0.1:45141", "<sip:127.0.0.1:45141;lr>,<sip:127.0.0.1:45142;lr>"));
    }
 
 };
