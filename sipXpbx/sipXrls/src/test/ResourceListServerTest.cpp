@@ -304,7 +304,7 @@ public:
             0 == method.compareTo(SIP_SUBSCRIBE_METHOD) )
          {
             // Accept the Subscription, regardless of whether it for a 'dialog' or 'reg' event
-            // inorder to stop all the retransmissions
+            // in order to stop retransmissions
             SipMessage regResponse;
             regResponse.setResponseData(&request, 202, "Accepted", "sip:127.0.0.1:45141");
             SipMessage * dispatchedMessage = new SipMessage(regResponse);            
@@ -324,7 +324,7 @@ public:
 
                Url toField;
                regResponse.getToUrl(toField);
-               
+
                SipMessage regNotify;
                regNotify.setNotifyData(&request, 1, "", "", "reg");
                UtlString regInfo ("<?xml version=\"1.0\"?>\r\n"
@@ -345,6 +345,9 @@ public:
                HttpBody * newBody = new HttpBody (regInfo, strlen(regInfo), "application/reginfo+xml");
                regNotify.setContentType("application/reginfo+xml");
                regNotify.setBody(newBody);
+
+               // Set the From field the same as the to field from the 202 response, as it
+               // contains the dialog identifying to tags
                regNotify.setRawFromField(toField.toString().data());
                sendToRlsServerUnderTest( regNotify );
             }
@@ -373,7 +376,7 @@ public:
    //____________________________________________________
    // || || || || || || || || || || || || || || || || || 
    // \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ \/ 
-   // Acutal test cases start below.  The test case skeleton is:
+   // Actual test cases start below.  The test case skeletons are:
    //
    // void someTestCase()
    // {
@@ -388,8 +391,19 @@ public:
    //     ...
    //     freeAllTestFixtures();
    // }
+   //
+   // void someRegEventTestCase()
+   // {
+   //      UtlString regInfoContact; < The contact info xml to be tested>
+   //      ...
+   //      CPPUNIT_ASSERT( ContactSetTest( <contact info xml with the uri, gruu, and path headers>, 
+   //                                      <expected request uri, if the reg-info is parsed correctly>, 
+   //                                      <expected route, if the reg-info is parsed correctly>
+   //                                    );
+   // }
+   //
    //____________________________________________________
-   
+
    void SubscribeWithEventListSupportAcceptedTest()
    {
       instantiateAllTestFixtures( "resource-lists1.xml", 
@@ -538,6 +552,12 @@ public:
 
       freeAllTestFixtures();
    }
+
+
+    // ================================================
+    //  REG-INFO EVENT SPECIFIC TEST CASES START HERE:
+    // ================================================
+
 
    void regInfoSubscribeWithGruuAddressTest()
    {

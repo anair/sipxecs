@@ -302,7 +302,8 @@ void RegisterEventServer::generateContent(const UtlString& aorString,
    // (Ugh.)
    version = mVersion++;
    content.append("<?xml version=\"1.0\"?>\r\n"
-                  "<reginfo xmlns=\"urn:ietf:params:xml:ns:reg\" "
+                  "<reginfo xmlns=\"urn:ietf:params:xml:ns:reginfo\" "
+                  "xmlns:gr=\"urn:ietf:params:xml:ns:gruuinfo\" "
                   "version=\"");
    content.appendNumber(version);
    content.append("\" state=\"full\">\r\n");

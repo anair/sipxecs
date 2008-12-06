@@ -509,7 +509,7 @@ int main(int argc, char* argv[])
    // terminate the wait.
    for(int i=0; i<startupWait && !gShutdownFlag; i++)
    {
-      OsTask::delay(2);
+      OsTask::delay(1000);
    }
 
    if (!gShutdownFlag)
