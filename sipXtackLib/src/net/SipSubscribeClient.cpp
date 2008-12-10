@@ -415,12 +415,15 @@ void SipSubscribeClient::endAllSubscriptions()
             NULL); // no response
       }
 
-      // Unsubscribe and stop refreshing the subscription
-      mpRefreshMgr->stopRefresh(*dialogKey);
+      UtlString dialogHandle(*dialogKey);
 
       delete clientState;
 
       unlock();
+
+      // Unsubscribe and stop refreshing the subscription
+      mpRefreshMgr->stopRefresh(dialogHandle.data());
+
       // Allow other threads waiting for the lock to run.
       OsTask::yield();
    }
