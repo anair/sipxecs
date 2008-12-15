@@ -475,11 +475,11 @@ UtlBoolean SipSession::isMessageFromInitiator(SipMessage& message)
     message.getCallIdField(&messageCallId);
 
     return(((message.isResponse() &&
-            SipMessage::isSameSession(mRemoteUrl, messageFromUrl) &&
-           SipMessage::isSameSession(mLocalUrl, messageToUrl)) ||
+             SipMessage::isSameSession(mRemoteUrl, messageFromUrl) &&
+             SipMessage::isSameSession(mLocalUrl, messageToUrl, TRUE)) ||
            (!message.isResponse() &&
-            SipMessage::isSameSession(mRemoteUrl, messageToUrl) &&
-           SipMessage::isSameSession(mLocalUrl, messageFromUrl)))&&
+            SipMessage::isSameSession(mRemoteUrl, messageToUrl, TRUE) &&
+            SipMessage::isSameSession(mLocalUrl, messageFromUrl)))&&
            messageCallId.compareTo(*this) == 0);
 }
 
@@ -493,11 +493,11 @@ UtlBoolean SipSession::isMessageFromDestination(SipMessage& message)
     message.getCallIdField(&messageCallId);
 
     return(((!message.isResponse() &&
-            SipMessage::isSameSession(mRemoteUrl, messageFromUrl) &&
-           SipMessage::isSameSession(mLocalUrl, messageToUrl)) ||
+             SipMessage::isSameSession(mRemoteUrl, messageFromUrl) &&
+             SipMessage::isSameSession(mLocalUrl, messageToUrl, TRUE)) ||
            (message.isResponse() &&
-            SipMessage::isSameSession(mRemoteUrl, messageToUrl) &&
-           SipMessage::isSameSession(mLocalUrl, messageFromUrl)))&&
+            SipMessage::isSameSession(mRemoteUrl, messageToUrl, TRUE) &&
+            SipMessage::isSameSession(mLocalUrl, messageFromUrl)))&&
            messageCallId.compareTo(*this) == 0);
 }
 

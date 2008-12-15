@@ -1256,7 +1256,9 @@ public:
     UtlBoolean isServerTransaction(UtlBoolean isOutgoing) const;
 
     UtlBoolean isSameSession(const SipMessage* message) const;
-    static UtlBoolean isSameSession(Url& previousUrl, Url& newUrl);
+    static UtlBoolean isSameSession(Url firstUrl, 
+                                    Url secondUrl,
+                                    UtlBoolean comparingToUrl = FALSE);
     UtlBoolean isResponseTo(const SipMessage* message) const;
     UtlBoolean isAckFor(const SipMessage* inviteResponse) const;
     
