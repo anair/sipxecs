@@ -4633,7 +4633,7 @@ UtlBoolean SipMessage::isSameSession(Url firstUrl, Url secondUrl, UtlBoolean com
       }
    }
 
-   return isSame;
+   return (isSame);
 }
 
 UtlBoolean SipMessage::isResponseTo(const SipMessage* request) const
