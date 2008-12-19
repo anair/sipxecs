@@ -20,8 +20,6 @@
 #include "utl/UtlRegex.h"
 #include "utl/PluginHooks.h"
 #include "utl/UtlHashBagIterator.h"
-#include "net/SipLine.h"
-#include "net/SipLineMgr.h"
 #include "net/SipUserAgent.h"
 #include "net/NetMd5Codec.h"
 #include "net/NameValueTokenizer.h"
@@ -164,21 +162,6 @@ SipRegistrarServer::initialize(
         OsSysLog::add(FAC_SIP, PRI_INFO, "SIP_DOMAIN_ALIASES : %s",
                       hostAliases.data());
         mSipUserAgent->setHostAliases(hostAliases);    
-    }
-
-    // get SIP_DOMAIN_NAME from domain-config
-    UtlString domainName;
-    domainConfig.get(SipXecsService::DomainDbKey::SIP_DOMAIN_NAME, domainName);
-
-    if(!domainName.isNull())
-    {
-        OsSysLog::add(FAC_SIP, PRI_INFO, "SIP_DOMAIN_NAME : %s",
-                      domainName.data());
-        SipLineMgr* lineMgr = addCredentials (domainName, mRealm);
-        if(lineMgr)
-        {
-           mSipUserAgent->setLineMgr(lineMgr);
-        }
     }
 
     // Get the additional contact setting.
@@ -1560,100 +1543,6 @@ void SipRegistrarServer::restoreDbUpdateNumber()
 
 SipRegistrarServer::~SipRegistrarServer()
 {
-}
-
-// Get and add the credentials for sipXregistrar
-SipLineMgr* SipRegistrarServer::addCredentials (UtlString domain, UtlString realm)
-{
-   SipLine* line = NULL;
-   SipLineMgr* lineMgr = NULL;
-   UtlString user;
-
-   CredentialDB* credentialDb;
-   if ((credentialDb = CredentialDB::getInstance()))
-   {
-      Url identity;
-
-      identity.setUserId("~~id~sipXrls");
-      identity.setHostAddress(domain);
-      UtlString ha1_authenticator;
-      UtlString authtype;
-      bool bSuccess = false;
-      
-      if (credentialDb->getCredential(identity, realm, user, ha1_authenticator, authtype))
-      {
-         if ((line = new SipLine( identity // user entered url
-                                 ,identity // identity url
-                                 ,user     // user
-                                 ,TRUE     // visible
-                                 ,SipLine::LINE_STATE_PROVISIONED
-                                 ,TRUE     // auto enable
-                                 ,FALSE    // use call handling
-                                 )))
-         {
-            if ((lineMgr = new SipLineMgr()))
-            {
-               if (lineMgr->addLine(*line))
-               {
-                  if (lineMgr->addCredentialForLine( identity, realm, user, ha1_authenticator
-                                                    ,HTTP_DIGEST_AUTHENTICATION
-                                                    )
-                      )
-                  {
-                     lineMgr->setDefaultOutboundLine(identity);
-                     bSuccess = true;
-
-                     OsSysLog::add(FAC_SIP, PRI_INFO,
-                                   "Added identity '%s': user='%s' realm='%s'"
-                                   ,identity.toString().data(), user.data(), realm.data()
-                                   );
-                  }
-                  else
-                  {
-                     OsSysLog::add(FAC_SIP, PRI_CRIT,
-                                   "Error adding identity '%s': user='%s' realm='%s'\n",
-                                   identity.toString().data(), user.data(), realm.data()
-                                   );
-                  }
-               }
-               else
-               {
-                  OsSysLog::add(FAC_SIP, PRI_CRIT, "addLine failed" );
-               }
-            }
-            else
-            {
-               OsSysLog::add(FAC_SIP, PRI_CRIT,
-                             "Constructing SipLineMgr failed" );
-            }
-         }
-         else
-         {
-            OsSysLog::add(FAC_SIP, PRI_CRIT,
-                          "Constructing SipLine failed" );
-         }
-      }
-      else
-      {
-         OsSysLog::add(FAC_SIP, PRI_CRIT,
-                       "No credential found for '%s' in realm '%s'"
-                       ,identity.toString().data(), domain.data(), realm.data()
-                       );
-      }
-      
-      if( !bSuccess )
-      {
-         delete line;
-         line = NULL;
-         
-         delete lineMgr;
-         lineMgr = NULL;         
-      }
-   }
-
-   credentialDb->releaseInstance();
-
-   return lineMgr;
 }
 
 void RegisterPlugin::takeAction( const SipMessage&   registerMessage  
