@@ -179,6 +179,9 @@ protected:
      * - false if not (responseMessage is then set up as a challenge)
      */
 
+    /// Add in the credentials for SipUserAgent
+    SipLineMgr* addCredentials (UtlString domain, UtlString realm);
+
     /// If replication is configured, then name of this registrar as primary
     const UtlString& primaryName() const;
 };

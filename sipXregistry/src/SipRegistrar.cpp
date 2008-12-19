@@ -37,6 +37,7 @@
 #include "SipRegistrarServer.h"
 #include "SyncRpc.h"
 
+
 // EXTERNAL FUNCTIONS
 // EXTERNAL VARIABLES
 // CONSTANTS
@@ -936,4 +937,3 @@ SipRegistrar::addValidDomain(const UtlString& host, int port)
 
    mValidDomains.insert(valid);
 }
-

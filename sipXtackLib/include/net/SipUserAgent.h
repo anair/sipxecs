@@ -586,6 +586,9 @@ public:
     const UtlString& getUserAgentName() const;
       //! Sets the User Agent name sent with outgoing sip messages.
 
+    void setLineMgr(SipLineMgr* lineMgr);
+      //! Set the SipLineMgr attribute
+
 /* ============================ INQUIRY =================================== */
 
     virtual UtlBoolean isMessageLoggingEnabled();

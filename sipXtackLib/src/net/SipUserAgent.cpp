@@ -3959,6 +3959,11 @@ void SipUserAgent::setIncludePlatformInUserAgentName(const bool bInclude)
     mbIncludePlatformInUserAgentName = bInclude;
 }
 
+void SipUserAgent::setLineMgr(SipLineMgr* lineMgr)
+{
+   mpLineMgr = lineMgr;
+}
+
 const bool SipUserAgent::addContactAddress(CONTACT_ADDRESS& contactAddress)
 {
     return mContactDb.addContact(contactAddress);
