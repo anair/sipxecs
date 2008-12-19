@@ -22,7 +22,10 @@
 #include "net/Url.h"
 #include "net/CallId.h"
 #include "net/SipDialogEvent.h"
+#include "net/SipLine.h"
+#include "net/SipLineMgr.h"
 #include "registry/SipRedirectServer.h"
+#include "sipXecsService/SipXecsService.h"
 #include "xmlparser/ExtractContent.h"
 #include "net/SipMessage.h"
 
@@ -300,7 +303,17 @@ SipRedirectorPickUp::initialize(OsConfigDb& configDb,
       UtlString bindIp;
       if (configDb.get(CONFIG_SETTING_BIND_IP, bindIp) != OS_SUCCESS ||
             !OsSocket::isIp4Address(bindIp))
-         bindIp = "0.0.0.0";      
+         bindIp = "0.0.0.0";
+      
+      OsConfigDb domainConfig;
+      domainConfig.loadFromFile(SipXecsService::domainConfigPath());
+      
+      // get SIP_DOMAIN_NAME from domain-config
+      UtlString realm;
+      domainConfig.get(SipXecsService::DomainDbKey::SIP_REALM, realm);
+
+      SipLineMgr* lineMgr = NULL;
+      lineMgr = addCredentials (mDomain, realm);
 
       // Create a SIP user agent to generate SUBSCRIBEs and receive NOTIFYs,
       // and save a pointer to it.
@@ -326,7 +339,7 @@ SipRedirectorPickUp::initialize(OsConfigDb& configDb,
          NULL, // natPingUrl
          0, // natPingFrequency
          "PING", // natPingMethod
-         NULL, // lineMgr
+         lineMgr, // lineMgr
          SIP_DEFAULT_RTT, // sipFirstResendTimeout
          TRUE, // defaultToUaTransactions
          -1, // readBufferSize
@@ -1243,4 +1256,99 @@ SipRedirectorPickUpTask::handleMessage(OsMsg& eventMessage)
 const UtlString& SipRedirectorPickUp::name( void ) const
 {
    return mLogName;
+}
+
+// Get and add the credentials for sipXregistrar
+SipLineMgr* 
+SipRedirectorPickUp::addCredentials (UtlString domain, UtlString realm)
+{
+   SipLine* line = NULL;
+   SipLineMgr* lineMgr = NULL;
+   UtlString user;
+
+   CredentialDB* credentialDb;
+   if ((credentialDb = CredentialDB::getInstance()))
+   {
+      Url identity;
+
+      identity.setUserId("~~id~sipXrls");
+      identity.setHostAddress(domain);
+      UtlString ha1_authenticator;
+      UtlString authtype;
+      bool bSuccess = false;
+      
+      if (credentialDb->getCredential(identity, realm, user, ha1_authenticator, authtype))
+      {
+         if ((line = new SipLine( identity // user entered url
+                                 ,identity // identity url
+                                 ,user     // user
+                                 ,TRUE     // visible
+                                 ,SipLine::LINE_STATE_PROVISIONED
+                                 ,TRUE     // auto enable
+                                 ,FALSE    // use call handling
+                                 )))
+         {
+            if ((lineMgr = new SipLineMgr()))
+            {
+               if (lineMgr->addLine(*line))
+               {
+                  if (lineMgr->addCredentialForLine( identity, realm, user, ha1_authenticator
+                                                    ,HTTP_DIGEST_AUTHENTICATION
+                                                    )
+                      )
+                  {
+                     lineMgr->setDefaultOutboundLine(identity);
+                     bSuccess = true;
+
+                     OsSysLog::add(FAC_SIP, PRI_INFO,
+                                   "Added identity '%s': user='%s' realm='%s'"
+                                   ,identity.toString().data(), user.data(), realm.data()
+                                   );
+                  }
+                  else
+                  {
+                     OsSysLog::add(FAC_SIP, PRI_CRIT,
+                                   "Error adding identity '%s': user='%s' realm='%s'\n",
+                                   identity.toString().data(), user.data(), realm.data()
+                                   );
+                  }
+               }
+               else
+               {
+                  OsSysLog::add(FAC_SIP, PRI_CRIT, "addLine failed" );
+               }
+            }
+            else
+            {
+               OsSysLog::add(FAC_SIP, PRI_CRIT,
+                             "Constructing SipLineMgr failed" );
+            }
+         }
+         else
+         {
+            OsSysLog::add(FAC_SIP, PRI_CRIT,
+                          "Constructing SipLine failed" );
+         }
+      }
+      else
+      {
+         OsSysLog::add(FAC_SIP, PRI_CRIT,
+                       "No credential found for '%s' in realm '%s'"
+                       ,identity.toString().data(), domain.data(), realm.data()
+                       );
+      }
+      
+      if( !bSuccess )
+      {
+         delete line;
+         line = NULL;
+         
+         delete lineMgr;
+         lineMgr = NULL;         
+      }
+   }
+
+   credentialDb->releaseInstance();
+
+   return lineMgr;
 }
