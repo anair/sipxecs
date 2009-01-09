@@ -15,11 +15,13 @@
 #include "net/NameValueTokenizer.h"
 #include "SipRouter.h"
 #include "SubscriptionAuth.h"
+#include "utl/UtlRegex.h"
 
 // DEFINES
 // CONSTANTS
 // CONSTANTS
 const char* SubscriptionAuth::EventsRequiringAuthenticationKey = "PACKAGES_REQUIRING_AUTHENTICATION";
+const char* SubscriptionAuth::DestinationNotRequiringAuthenticationKey = "DESTINATIONS_NOT_REQUIRING_AUTHENTICATION";
 
 // TYPEDEFS
 // FORWARD DECLARATIONS
@@ -43,6 +45,7 @@ SubscriptionAuth::SubscriptionAuth(const UtlString& pluginName ///< the name for
 SubscriptionAuth::~SubscriptionAuth()
 {
    mEventPackagesRequiringAuthentication.destroyAll();
+   mDestinationNotRequiringAuthentication.destroyAll();
 }
 
 void
@@ -69,7 +72,10 @@ SubscriptionAuth::readConfig( OsConfigDb& configDb /**< a subhash of the individ
    OsSysLog::add(FAC_SIP, PRI_DEBUG, "SubscriptionAuth[%s]::readConfig",
                  mInstanceName.data()
                  );
-   
+
+   mEventPackagesRequiringAuthentication.destroyAll();
+   mDestinationNotRequiringAuthentication.destroyAll();
+
    UtlString eventPackagesRequiringAuthentication;
    if (configDb.get(EventsRequiringAuthenticationKey, 
                     eventPackagesRequiringAuthentication) && 
@@ -100,6 +106,44 @@ SubscriptionAuth::readConfig( OsConfigDb& configDb /**< a subhash of the individ
                     ,mInstanceName.data(), EventsRequiringAuthenticationKey
                     );
    }
+
+   UtlString destinationNotRequiringAuthentication;
+   if (configDb.get(DestinationNotRequiringAuthenticationKey, 
+                    destinationNotRequiringAuthentication) &&
+       !destinationNotRequiringAuthentication.isNull())
+   {
+      OsSysLog::add( FAC_SIP, PRI_INFO
+                    ,"SubscriptionAuth[%s]::readConfig "
+                    "  %s = '%s'"
+                    ,mInstanceName.data(), DestinationNotRequiringAuthenticationKey
+                    ,destinationNotRequiringAuthentication.data()
+                    );
+      
+      int destinationIndex = 0;
+      UtlString destiantionName;
+      while(NameValueTokenizer::getSubField(destinationNotRequiringAuthentication.data(), 
+                                            destinationIndex,
+                                            ", \t", &destiantionName))
+      {
+         RegEx* destinationRegEx;
+         try
+         {
+            destinationRegEx = new RegEx(destiantionName.data());
+            mDestinationNotRequiringAuthentication.insert(destinationRegEx);
+            destinationIndex++;
+         }
+         catch(const char* compileError)
+         {
+            OsSysLog::add(FAC_SIP, PRI_ERR
+                          ,"SubscriptionAuth[%s]::readConfig Invalid recognizer expression '%s' for '%s': %s"
+                          ,mInstanceName.data()
+                          ,destiantionName.data()
+                          ,DestinationNotRequiringAuthenticationKey
+                          ,compileError
+                          );
+         }
+      }
+   }
 }
 
 AuthPlugin::AuthResult
@@ -122,12 +166,15 @@ SubscriptionAuth::authorizeAndModify(const UtlString& id,    /**< The authentica
 {
    AuthResult result = CONTINUE;
    UtlString eventField;
+   UtlString destination;
+   requestUri.getUserId(destination);
 
    if (CONTINUE == priorResult &&
        id.isNull() &&
        method.compareTo(SIP_SUBSCRIBE_METHOD) == 0 &&
        request.getEventField(eventField) &&
-       mEventPackagesRequiringAuthentication.contains( &eventField ) )
+       mEventPackagesRequiringAuthentication.contains( &eventField ) &&
+       destinationRequiresAuthentication(destination))
    {
       // we do not have an authenticated ID for the request - challenge it.
       // get the call-id to use in logging
@@ -139,7 +186,26 @@ SubscriptionAuth::authorizeAndModify(const UtlString& id,    /**< The authentica
                     mInstanceName.data(), eventField.data(), callId.data()
                     );
       result = DENY;
-      reason = "Authentication Required to Subscribe to dialog event package " + eventField;
+      reason = "Authentication Required to Subscribe to " + eventField;
    }
    return result;
+}
+
+UtlBoolean
+SubscriptionAuth::destinationRequiresAuthentication(const UtlString& destination)
+{
+   UtlBoolean requiresAuth = TRUE;
+   UtlSListIterator nextDestinationRegEx(mDestinationNotRequiringAuthentication);
+
+   RegEx* destinationRegEx;
+   
+   while((destinationRegEx = dynamic_cast<RegEx*>(nextDestinationRegEx())))
+   {
+      if(destinationRegEx->Search(destination.data()))
+      {
+         requiresAuth = FALSE;
+      }
+   }
+
+   return requiresAuth;
 }

@@ -85,10 +85,14 @@ class SubscriptionAuth : public AuthPlugin
   private:
    friend AuthPlugin* getAuthPlugin(const UtlString& name);
    static const char* EventsRequiringAuthenticationKey;
+   static const char* DestinationNotRequiringAuthenticationKey;
 
    SipRouter* mpSipRouter;
    UtlSList   mEventPackagesRequiringAuthentication;
-   
+   UtlSList   mDestinationNotRequiringAuthentication;
+
+   UtlBoolean destinationRequiresAuthentication(const UtlString& destination);
+
    /// Constructor - private so that only the factory can call it.
    SubscriptionAuth(const UtlString& instanceName ///< the configured name for this plugin instance
                     );
