@@ -128,9 +128,9 @@ SubscriptionAuth::readConfig( OsConfigDb& configDb /**< a subhash of the individ
          RegEx* destinationRegEx;
          try
          {
+            destinationIndex++;
             destinationRegEx = new RegEx(destiantionName.data());
             mDestinationNotRequiringAuthentication.insert(destinationRegEx);
-            destinationIndex++;
          }
          catch(const char* compileError)
          {
