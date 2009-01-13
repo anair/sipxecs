@@ -34,18 +34,19 @@ public class SnapshotTest extends TestCase {
                 + "--log-stop '2008-07-11 12:36:50' sipx-configuration.tar.gz", cmdLine);
 
         snapshot.setCredentials(true);
+        snapshot.setCdr(true);
         snapshot.setWww(false);
         cmdLine = StringUtils.join(snapshot.getCmdLine("", startDate, endDate), ' ');
         assertEquals(
                 File.separator
                         + "sipx-snapshot --logs current --log-start '2008-07-11 12:34:46' "
-                        + "--log-stop '2008-07-11 12:36:50' --credentials --no-www sipx-configuration.tar.gz",
+                        + "--log-stop '2008-07-11 12:36:50' --credentials --cdr --no-www sipx-configuration.tar.gz",
                 cmdLine);
 
         snapshot.setLogs(false);
         cmdLine = StringUtils.join(snapshot.getCmdLine("xyz", startDate, endDate), ' ');
         assertEquals("xyz" + File.separator
-                + "sipx-snapshot --logs none --credentials --no-www sipx-configuration.tar.gz",
+                + "sipx-snapshot --logs none --credentials --cdr --no-www sipx-configuration.tar.gz",
                 cmdLine);
     }
 }
