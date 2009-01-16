@@ -73,6 +73,8 @@ public class BridgeSbcTest {
         sipTrunk.setAddressTransport(AddressTransport.UDP);
         sipTrunk.setSettingValue("itsp-account/user-name", "juser");
         sipTrunk.setSettingValue("itsp-account/password", "1234");
+        sipTrunk.setSettingValue("itsp-account/itsp-registrar-address", "10.1.1.1");
+        sipTrunk.setSettingValue("itsp-account/itsp-registrar-listening-port", "5071");
 
         GatewayContext gatewayContext = createMock(GatewayContext.class);
         gatewayContext.getGatewayByType(SipTrunk.class);
