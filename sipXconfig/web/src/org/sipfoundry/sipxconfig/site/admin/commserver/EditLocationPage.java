@@ -9,6 +9,7 @@
  */
 package org.sipfoundry.sipxconfig.site.admin.commserver;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -26,6 +27,7 @@ import org.sipfoundry.sipxconfig.admin.commserver.Location;
 import org.sipfoundry.sipxconfig.admin.commserver.LocationsManager;
 import org.sipfoundry.sipxconfig.admin.commserver.SipxProcessContext;
 import org.sipfoundry.sipxconfig.admin.commserver.SipxProcessContext.Command;
+import org.sipfoundry.sipxconfig.admin.monitoring.MonitoringContext;
 import org.sipfoundry.sipxconfig.components.ExtraOptionModelDecorator;
 import org.sipfoundry.sipxconfig.components.LocalizedOptionModelDecorator;
 import org.sipfoundry.sipxconfig.components.ObjectSelectionModel;
@@ -56,7 +58,10 @@ public abstract class EditLocationPage extends PageWithCallback implements PageB
     public abstract AcdContext getAcdContext();
 
     @InjectObject("spring:conferenceBridgeContext")
-    public abstract ConferenceBridgeContext getConferenceBridgeContext();    
+    public abstract ConferenceBridgeContext getConferenceBridgeContext();
+
+    @InjectObject(value = "spring:monitoringContext")
+    public abstract MonitoringContext getMonitoringContext();
 
     @Bean
     public abstract SipxValidationDelegate getValidator();
@@ -88,7 +93,12 @@ public abstract class EditLocationPage extends PageWithCallback implements PageB
             setLocationBean(location);
         }
 
-        setAvailableTabNames(Arrays.asList("configureLocation", "listServices"));
+        List<String> tabNames = new ArrayList<String>();
+        tabNames.addAll(Arrays.asList("configureLocation", "listServices"));
+        if (getMonitoringContext().isEnabled()) {
+            tabNames.add("monitorTarget");
+        }
+        setAvailableTabNames(tabNames);
         setSelectedBundle(null);
     }
 
