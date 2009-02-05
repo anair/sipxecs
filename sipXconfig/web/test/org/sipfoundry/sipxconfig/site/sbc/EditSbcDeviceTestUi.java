@@ -52,7 +52,7 @@ public class EditSbcDeviceTestUi extends WebTestCase {
         clickButton("form:ok");
         SiteTestHelper.assertNoUserError(tester);
         sbcsTable = getTable("list:sbc");
-        assertEquals(3, sbcsTable.getRowCount());
+        assertEquals(2, sbcsTable.getRowCount());
 
         //delete one sbc
         setWorkingForm("Form");

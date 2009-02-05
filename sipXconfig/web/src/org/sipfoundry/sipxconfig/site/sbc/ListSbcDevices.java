@@ -131,14 +131,16 @@ public abstract class ListSbcDevices extends BasePage {
 
     public IPropertySelectionModel getSbcDescriptorSelectionModel() {
         DeviceDescriptorSelectionModel model = new DeviceDescriptorSelectionModel();
-        model.setModelSource(getSbcDeviceModelSource());
+        model.setModelSourceWithoutInternalSbc(getSbcDeviceModelSource());
         model.setExtraLabel(getMessages().getMessage("prompt.addNew"));
         model.setExtraOption(null);
         return model;
     }
 
     public static class DeviceDescriptorSelectionModel extends ExtraOptionModelDecorator {
-        public void setModelSource(ModelSource modelSource) {
+        private static final String LABEL_EXPRESSION = "label";
+
+        public void setModelSourceWithoutInternalSbc(ModelSource modelSource) {
             ObjectSelectionModel model = new ObjectSelectionModel();
             Collection<SbcDescriptor> modelCollection = new ArrayList<SbcDescriptor>();
             for (Iterator<SbcDescriptor> iterator = modelSource.getModels().iterator(); iterator.hasNext();) {
@@ -148,7 +150,14 @@ public abstract class ListSbcDevices extends BasePage {
                 }
             }  
             model.setCollection(modelCollection);
-            model.setLabelExpression("label");
+            model.setLabelExpression(LABEL_EXPRESSION);
+            setModel(model);
+        }
+
+        public void setModelSource(ModelSource modelSource) {
+            ObjectSelectionModel model = new ObjectSelectionModel();
+            model.setCollection(modelSource.getModels());
+            model.setLabelExpression(LABEL_EXPRESSION);
             setModel(model);
         }
     }
