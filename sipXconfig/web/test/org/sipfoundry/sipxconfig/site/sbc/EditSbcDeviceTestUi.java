@@ -54,19 +54,6 @@ public class EditSbcDeviceTestUi extends WebTestCase {
         sbcsTable = getTable("list:sbc");
         assertEquals(3, sbcsTable.getRowCount());
 
-        //add bridge
-        SiteTestHelper.selectOption(tester, "PropertySelection", "Internal SBC");
-        setTextField("sbcDevice:name", "bridge");
-        assertTextFieldEquals("sbcDevice:address", SiteTestHelper.getSbcDeviceLocalIp());
-        clickButton("form:ok");
-        SiteTestHelper.assertNoUserError(tester);
-        sbcsTable = getTable("list:sbc");
-        assertEquals(4, sbcsTable.getRowCount());
-
-        //creation of maximum one bridge is allowed
-        SiteTestHelper.selectOption(tester, "PropertySelection", "Internal SBC");
-        SiteTestHelper.assertUserError(getTester());
-
         //delete one sbc
         setWorkingForm("Form");
         checkCheckbox("checkbox");
@@ -107,14 +94,5 @@ public class EditSbcDeviceTestUi extends WebTestCase {
         clickButton("form:ok");
 
         SiteTestHelper.assertUserError(tester);
-    }
-
-    public void testNoProfilePreviewOnNewSbc() throws Exception {
-        SiteTestHelper.assertNoUserError(tester);
-
-        SiteTestHelper.selectOption(tester, "PropertySelection", "Internal SBC");
-
-        SiteTestHelper.assertNoUserError(tester);
-        assertTextNotPresent("sipxbridge.xml");
     }
 }

@@ -8,7 +8,9 @@
  */
 package org.sipfoundry.sipxconfig.site.sbc;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 
 import org.apache.tapestry.IPage;
 import org.apache.tapestry.IRequestCycle;
@@ -138,7 +140,14 @@ public abstract class ListSbcDevices extends BasePage {
     public static class DeviceDescriptorSelectionModel extends ExtraOptionModelDecorator {
         public void setModelSource(ModelSource modelSource) {
             ObjectSelectionModel model = new ObjectSelectionModel();
-            model.setCollection(modelSource.getModels());
+            Collection<SbcDescriptor> modelCollection = new ArrayList<SbcDescriptor>();
+            for (Iterator<SbcDescriptor> iterator = modelSource.getModels().iterator(); iterator.hasNext();) {
+                SbcDescriptor sbcDescriptor = iterator.next();
+                if (!sbcDescriptor.isInternalSbc()) {
+                    modelCollection.add(sbcDescriptor);
+                }
+            }  
+            model.setCollection(modelCollection);
             model.setLabelExpression("label");
             setModel(model);
         }

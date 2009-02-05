@@ -204,6 +204,7 @@ public class Location extends BeanWithId {
             LocationSpecificService locationSpecificService = iterator.next();
             SipxService service = locationSpecificService.getSipxService();
             if (services.contains(service)) {
+                service.tearDown();
                 iterator.remove();
             }
         }

@@ -151,6 +151,13 @@ public abstract class SipxService extends BeanWithSettings implements Model {
         // no validation is done by default
     }
 
+    /**
+     * Override this method to perform cleanup before removing services
+     */
+    public void tearDown() {
+        // no cleanup is done by default
+    }
+
     @Override
     protected Setting loadSettings() {
         return getModelFilesContext().loadModelFile(m_modelName, m_modelDir);

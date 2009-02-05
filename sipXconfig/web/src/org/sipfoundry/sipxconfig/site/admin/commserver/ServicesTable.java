@@ -23,6 +23,7 @@ import org.apache.tapestry.IRequestCycle;
 import org.apache.tapestry.annotations.Asset;
 import org.apache.tapestry.annotations.Bean;
 import org.apache.tapestry.annotations.InjectObject;
+import org.apache.tapestry.annotations.InjectPage;
 import org.apache.tapestry.annotations.Parameter;
 import org.apache.tapestry.services.ExpressionEvaluator;
 import org.apache.tapestry.valid.IValidationDelegate;
@@ -33,6 +34,8 @@ import org.sipfoundry.sipxconfig.admin.commserver.Location;
 import org.sipfoundry.sipxconfig.admin.commserver.LocationsManager;
 import org.sipfoundry.sipxconfig.admin.commserver.ServiceStatus;
 import org.sipfoundry.sipxconfig.admin.commserver.SipxProcessContext;
+import org.sipfoundry.sipxconfig.admin.dialplan.sbc.SbcDescriptor;
+import org.sipfoundry.sipxconfig.admin.dialplan.sbc.SbcDeviceManager;
 import org.sipfoundry.sipxconfig.common.CoreContext;
 import org.sipfoundry.sipxconfig.common.UserException;
 import org.sipfoundry.sipxconfig.components.ObjectSelectionModel;
@@ -40,6 +43,7 @@ import org.sipfoundry.sipxconfig.components.PageWithCallback;
 import org.sipfoundry.sipxconfig.components.SelectMap;
 import org.sipfoundry.sipxconfig.service.LocationSpecificService;
 import org.sipfoundry.sipxconfig.service.SipxAcdService;
+import org.sipfoundry.sipxconfig.service.SipxBridgeService;
 import org.sipfoundry.sipxconfig.service.SipxCallResolverService;
 import org.sipfoundry.sipxconfig.service.SipxFreeswitchService;
 import org.sipfoundry.sipxconfig.service.SipxIvrService;
@@ -54,6 +58,7 @@ import org.sipfoundry.sipxconfig.service.SipxService;
 import org.sipfoundry.sipxconfig.service.SipxServiceManager;
 import org.sipfoundry.sipxconfig.service.SipxStatusService;
 import org.sipfoundry.sipxconfig.site.acd.AcdServerPage;
+import org.sipfoundry.sipxconfig.site.sbc.EditSbcDevice;
 import org.sipfoundry.sipxconfig.site.service.EditCallResolverService;
 import org.sipfoundry.sipxconfig.site.service.EditFreeswitchService;
 import org.sipfoundry.sipxconfig.site.service.EditIvrService;
@@ -86,6 +91,7 @@ public abstract class ServicesTable extends BaseComponent {
         SERVICE_MAP.put(SipxAcdService.BEAN_ID, AcdServerPage.PAGE);
         SERVICE_MAP.put(SipxIvrService.BEAN_ID, EditIvrService.PAGE);
         SERVICE_MAP.put(SipxMediaService.BEAN_ID, EditMediaService.PAGE);
+        SERVICE_MAP.put(SipxBridgeService.BEAN_ID, EditSbcDevice.PAGE);
     }
 
     @InjectObject("service:tapestry.ognl.ExpressionEvaluator")
@@ -105,6 +111,15 @@ public abstract class ServicesTable extends BaseComponent {
 
     @InjectObject("spring:coreContext")
     public abstract CoreContext getCoreContext();
+
+    @InjectObject("spring:sipXbridgeSbcModel")
+    public abstract SbcDescriptor getSbcDescriptor();
+
+    @InjectObject(value = "spring:sbcDeviceManager")
+    public abstract SbcDeviceManager getSbcDeviceManager();
+
+    @InjectPage(EditLocationPage.PAGE)
+    public abstract EditLocationPage getEditLocationPage();
 
     @Bean
     public abstract SelectMap getSelections();
@@ -175,13 +190,20 @@ public abstract class ServicesTable extends BaseComponent {
 
     public IPage editService(IRequestCycle cycle, String serviceBeanId, Integer locationId) {
         PageWithCallback page = (PageWithCallback) cycle.getPage(SERVICE_MAP.get(serviceBeanId));
-        page.setReturnPage(EditLocationPage.PAGE);
         if (page instanceof AcdServerPage) {
             AcdServer acdServer = getAcdContext().getAcdServerForLocationId(locationId);
             if (acdServer != null) {
                 ((AcdServerPage) page).setAcdServerId(acdServer.getId());
             }
+        } else if (page instanceof EditSbcDevice) {
+            if (null != getSbcDeviceManager().getBridgeSbc()) {
+                return EditSbcDevice.getEditPage(cycle, getSbcDeviceManager().getBridgeSbc().getId(), 
+                    getEditLocationPage().getPage());
+            } else {
+                return EditSbcDevice.getAddPage(cycle, getSbcDescriptor(), getEditLocationPage().getPage());
+            }
         }
+        page.setReturnPage(EditLocationPage.PAGE);
         return page;
     }
 
