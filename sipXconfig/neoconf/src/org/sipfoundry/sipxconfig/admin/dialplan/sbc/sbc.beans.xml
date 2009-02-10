@@ -32,6 +32,8 @@
   <bean id="sbcDeviceManagerImpl" class="org.sipfoundry.sipxconfig.admin.dialplan.sbc.SbcDeviceManagerImpl">
     <property name="sessionFactory" ref="sessionFactory" />
     <property name="daoEventPublisher" ref="daoEventPublisher" />
+    <property name="borderControllerBundle" ref="borderControllerBundle"></property>
+    <property name="sipXbridgeSbcModel" ref="sipXbridgeSbcModel"></property>
     <lookup-method name="getDialPlanActivationManager" bean="dialPlanActivationManager" />
   </bean>
 
@@ -72,6 +74,7 @@
     <property name="profileGenerator" ref="velocityProfileGenerator" />
     <property name="modelSource" ref="sbcModelSource" />
     <property name="defaults" ref="phoneDefaults" />
+    <property name="profileManager" ref="sbcProfileManager" />
   </bean>
 
   <bean id="sbcDeviceSource" class="org.sipfoundry.sipxconfig.admin.dialplan.sbc.SbcDeviceSource">

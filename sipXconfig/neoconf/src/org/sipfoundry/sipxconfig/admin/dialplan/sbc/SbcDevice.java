@@ -12,6 +12,7 @@ package org.sipfoundry.sipxconfig.admin.dialplan.sbc;
 import org.sipfoundry.sipxconfig.common.NamedObject;
 import org.sipfoundry.sipxconfig.device.Device;
 import org.sipfoundry.sipxconfig.device.ModelSource;
+import org.sipfoundry.sipxconfig.device.ProfileManager;
 import org.sipfoundry.sipxconfig.setting.Setting;
 import org.springframework.beans.factory.annotation.Required;
 
@@ -27,6 +28,8 @@ public class SbcDevice extends Device implements NamedObject {
     private ModelSource<SbcDescriptor> m_modelSource;
 
     private SbcDescriptor m_model;
+
+    private ProfileManager m_profileManager;
 
     public SbcDevice() {
     }
@@ -85,6 +88,14 @@ public class SbcDevice extends Device implements NamedObject {
 
     public String getDescription() {
         return m_description;
+    }
+
+    public void setProfileManager(ProfileManager profileManager) {
+        m_profileManager = profileManager;
+    }
+
+    public ProfileManager getProfileManager() {
+        return m_profileManager;
     }
 
     /**

@@ -13,10 +13,10 @@
     <property name="label" value="Internal SBC" />
     <property name="modelDir" value="sipXbridge" />
     <property name="serialNumberPattern" value="" />
-    <property name="maxAllowed" value="1" />
     <property name="defaultProfileLocation" ref="sipXbridgeProfileLocation" />
     <property name="defaultPort" value="5090" />
 	<property name="internetCallingSupported" value="false" />
+	<property name="internalSbc" value="true" />
   </bean>
 
   <bean id="sbcSipXbridge" class="org.sipfoundry.sipxconfig.admin.dialplan.sbc.bridge.BridgeSbc" scope="prototype"
@@ -24,5 +24,6 @@
     <property name="gatewayContext" ref="gatewayContext" />
     <property name="processContext" ref="sipxProcessContext" />
     <property name="sipxBridgeService" ref="sipxBridgeService" />
+    <property name="locationsManager" ref="locationsManager" />
   </bean>
 </beans>

@@ -215,4 +215,8 @@ public abstract class Device extends BeanWithGroups {
         }
         return jn.toString();
     }
+
+    public ProfileLocation getDefaultProfileLocation() {
+        return getModel().getDefaultProfileLocation();
+    }
 }

@@ -14,10 +14,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.sipfoundry.sipxconfig.admin.commserver.Location;
+import org.sipfoundry.sipxconfig.admin.commserver.LocationsManager;
 import org.sipfoundry.sipxconfig.admin.commserver.SipxProcessContext;
 import org.sipfoundry.sipxconfig.admin.dialplan.sbc.SbcDevice;
 import org.sipfoundry.sipxconfig.device.DeviceDefaults;
 import org.sipfoundry.sipxconfig.device.ProfileContext;
+import org.sipfoundry.sipxconfig.device.ProfileLocation;
+import org.sipfoundry.sipxconfig.device.ReplicatedProfileLocation;
 import org.sipfoundry.sipxconfig.gateway.GatewayContext;
 import org.sipfoundry.sipxconfig.gateway.SipTrunk;
 import org.sipfoundry.sipxconfig.service.SipxBridgeService;
@@ -33,6 +37,8 @@ public class BridgeSbc extends SbcDevice {
 
     private SipxBridgeService m_sipxBridgeService;
 
+    private LocationsManager m_locationsManager;
+
     @Required
     public void setGatewayContext(GatewayContext gatewayContext) {
         m_gatewayContext = gatewayContext;
@@ -46,6 +52,11 @@ public class BridgeSbc extends SbcDevice {
     @Required
     public void setSipxBridgeService(SipxBridgeService sipxBridgeService) {
         m_sipxBridgeService = sipxBridgeService;
+    }
+
+    @Required
+    public void setLocationsManager(LocationsManager locationsManager) {
+        m_locationsManager = locationsManager;
     }
 
     @Override
@@ -66,6 +77,19 @@ public class BridgeSbc extends SbcDevice {
     @Override
     public void initialize() {
         addDefaultBeanSettingHandler(new Defaults(getDefaults(), this));
+    }
+
+    @Override
+    public ProfileLocation getDefaultProfileLocation() {
+        ProfileLocation profileLocation = getModel().getDefaultProfileLocation();
+        Location[] locations = m_locationsManager.getLocations();
+        for (int i = 0; i < locations.length; i++) {
+            if (locations[i].getAddress().equals(getAddress())) {
+                ((ReplicatedProfileLocation) profileLocation).setLocation(locations[i]);
+                break;
+            }
+        }        
+        return profileLocation;
     }
 
     public List<SipTrunk> getMySipTrunks() {
@@ -124,6 +148,13 @@ public class BridgeSbc extends SbcDevice {
 
     @Override
     public void restart() {
-        m_processContext.manageServices(Collections.singleton(m_sipxBridgeService), SipxProcessContext.Command.RESTART);
+        Location[] locations = m_locationsManager.getLocations();
+        for (int i = 0; i < locations.length; i++) {
+            if (locations[i].getAddress().equals(getAddress())) {
+                m_processContext.manageServices(locations[i], Collections.singleton(m_sipxBridgeService),
+                        SipxProcessContext.Command.RESTART);
+                break;
+            }
+        }
     }
 }
