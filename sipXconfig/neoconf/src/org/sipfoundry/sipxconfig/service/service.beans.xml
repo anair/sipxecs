@@ -435,6 +435,7 @@
         <ref bean="borderControllerBundle" />
       </set>
     </property>
+    <property name="sbcDeviceManager" ref="sbcDeviceManager"></property>
   </bean>
 
   <bean id="sipxFreeswitchService" class="org.sipfoundry.sipxconfig.service.SipxFreeswitchService" scope="prototype"

@@ -9,6 +9,7 @@
  */
 package org.sipfoundry.sipxconfig.admin.dialplan.sbc.bridge;
 
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -20,12 +21,17 @@ import org.sipfoundry.sipxconfig.admin.commserver.SipxProcessContext;
 import org.sipfoundry.sipxconfig.admin.commserver.SipxReplicationContext;
 import org.sipfoundry.sipxconfig.admin.dialplan.sbc.SbcDevice;
 import org.sipfoundry.sipxconfig.device.DeviceDefaults;
+import org.sipfoundry.sipxconfig.device.InMemoryConfiguration;
+import org.sipfoundry.sipxconfig.device.Profile;
 import org.sipfoundry.sipxconfig.device.ProfileContext;
 import org.sipfoundry.sipxconfig.device.ProfileLocation;
 import org.sipfoundry.sipxconfig.device.ReplicatedProfileLocation;
 import org.sipfoundry.sipxconfig.gateway.GatewayContext;
 import org.sipfoundry.sipxconfig.gateway.SipTrunk;
+import org.sipfoundry.sipxconfig.nattraversal.NatTraversal;
+import org.sipfoundry.sipxconfig.nattraversal.NatTraversalManager;
 import org.sipfoundry.sipxconfig.service.SipxBridgeService;
+import org.sipfoundry.sipxconfig.service.SipxServiceManager;
 import org.sipfoundry.sipxconfig.setting.Setting;
 import org.sipfoundry.sipxconfig.setting.SettingEntry;
 import org.springframework.beans.factory.annotation.Required;
@@ -38,9 +44,11 @@ public class BridgeSbc extends SbcDevice {
 
     private SipxReplicationContext m_sipxReplicationContext;
 
-    private SipxBridgeService m_sipxBridgeService;
+    private SipxServiceManager m_sipxServiceManager;
 
     private LocationsManager m_locationsManager;
+
+    private NatTraversalManager m_natTraversalManager;
 
     private String m_profileName;
 
@@ -61,8 +69,8 @@ public class BridgeSbc extends SbcDevice {
     }
 
     @Required
-    public void setSipxBridgeService(SipxBridgeService sipxBridgeService) {
-        m_sipxBridgeService = sipxBridgeService;
+    public void setSipxServiceManager(SipxServiceManager sipxServiceManager) {
+        m_sipxServiceManager = sipxServiceManager;
     }
 
     @Required
@@ -78,6 +86,15 @@ public class BridgeSbc extends SbcDevice {
     @Required
     public void setProfileDirectory(String profileDirectory) {
         m_profileDirectory = profileDirectory;
+    }
+
+    @Required
+    public void setNatTraversalManager(NatTraversalManager natTraversalManager) {
+        m_natTraversalManager = natTraversalManager;
+    }
+
+    public NatTraversal getNatTraversal() {
+        return m_natTraversalManager.getNatTraversal();
     }
 
     @Override
@@ -111,6 +128,27 @@ public class BridgeSbc extends SbcDevice {
         return profileLocation;
     }
 
+    public List<InMemoryConfiguration> getConfigurations() {
+        ProfileLocation profileLocation = getProfileLocation();
+        List<InMemoryConfiguration> configurations = new ArrayList<InMemoryConfiguration>();
+        beforeProfileGeneration();
+        copyFiles(profileLocation);
+        Profile[] profileTypes = getProfileTypes();
+        if (profileTypes == null) {
+            return Collections.emptyList();
+        }
+        for (Profile profile : profileTypes) {
+            OutputStream outputStream = profile.getGeneratedProfile(this, profileLocation);
+            if (null != outputStream) {
+                InMemoryConfiguration configuration = new InMemoryConfiguration(m_profileDirectory,
+                        m_profileName, outputStream.toString());
+                configuration.setLocation(getLocation());
+                configurations.add(configuration);
+            }
+        }
+        return configurations;
+    }
+
     public List<SipTrunk> getMySipTrunks() {
         List<SipTrunk> trunks = new ArrayList<SipTrunk>();
         for (SipTrunk t : m_gatewayContext.getGatewayByType(SipTrunk.class)) {
@@ -119,6 +157,10 @@ public class BridgeSbc extends SbcDevice {
             }
         }
         return trunks;
+    }
+
+    public Location getLocation() {
+        return m_locationsManager.getLocationByAddress(getAddress());
     }
 
     public static class Context extends ProfileContext<BridgeSbc> {
@@ -144,6 +186,18 @@ public class BridgeSbc extends SbcDevice {
             m_device = device;
         }
 
+        @SettingEntry(paths = { "bridge-configuration/global-address" })
+        public String getGlobalAddress() {
+            NatTraversal natTraversal = ((BridgeSbc) m_device).getNatTraversal();
+            if (null != natTraversal) {
+                String address = natTraversal.getSettingValue("nattraversal-info/publicaddress");
+                if (null != address) {
+                    return address;
+                }
+            }
+            return m_device.getAddress();
+        }
+
         @SettingEntry(paths = { "bridge-configuration/local-address", "bridge-configuration/external-address" })
         public String getLocalAddress() {
             return m_device.getAddress();
@@ -167,8 +221,9 @@ public class BridgeSbc extends SbcDevice {
 
     @Override
     public void restart() {
-        Location location = m_locationsManager.getLocationByAddress(getAddress());
-        m_processContext.manageServices(location, Collections.singleton(m_sipxBridgeService),
+        SipxBridgeService sipxBridgeService = (SipxBridgeService) m_sipxServiceManager.getServiceByBeanId(
+                SipxBridgeService.BEAN_ID);
+        m_processContext.manageServices(getLocation(), Collections.singleton(sipxBridgeService),
                 SipxProcessContext.Command.RESTART);
     }
 }

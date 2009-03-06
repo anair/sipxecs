@@ -15,6 +15,7 @@ import java.util.Arrays;
 import junit.framework.JUnit4TestAdapter;
 
 import org.apache.commons.io.IOUtils;
+import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.sipfoundry.sipxconfig.TestHelper;
@@ -24,6 +25,7 @@ import org.sipfoundry.sipxconfig.device.Profile;
 import org.sipfoundry.sipxconfig.gateway.GatewayContext;
 import org.sipfoundry.sipxconfig.gateway.SipTrunk;
 import org.sipfoundry.sipxconfig.gateway.Gateway.AddressTransport;
+import org.sipfoundry.sipxconfig.nattraversal.NatTraversalManager;
 import org.sipfoundry.sipxconfig.phone.PhoneTestDriver;
 import org.sipfoundry.sipxconfig.setting.ModelFilesContext;
 
@@ -49,6 +51,10 @@ public class BridgeSbcTest {
 
         m_sbc = new BridgeSbc();
         m_location = TestHelper.setVelocityProfileGenerator(m_sbc);
+
+        NatTraversalManager natTraversalManager = EasyMock.createNiceMock(NatTraversalManager.class);
+        EasyMock.replay(natTraversalManager);
+        m_sbc.setNatTraversalManager(natTraversalManager);
 
         m_sbc.setDefaults(deviceDefaults);
         m_sbc.setModelFilesContext(modelFilesContext);

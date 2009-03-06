@@ -71,5 +71,29 @@ public abstract class AbstractProfileGenerator implements ProfileGenerator {
         }
     }
 
+    public OutputStream getGeneratedProfile(ProfileLocation location, ProfileContext context, 
+            ProfileFilter filter, String outputFileName) {
+        if (outputFileName == null) {
+            return null;
+        }
+
+        OutputStream wtr = location.getOutput(outputFileName);
+        try {
+            if (filter == null) {
+                generateProfile(context, wtr);
+            } else {
+                ByteArrayOutputStream unformatted = new ByteArrayOutputStream();
+                generateProfile(context, unformatted);
+                unformatted.close();
+                filter.copy(new ByteArrayInputStream(unformatted.toByteArray()), wtr);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            IOUtils.closeQuietly(wtr);
+        }
+        return wtr;
+    }
+
     protected abstract void generateProfile(ProfileContext context, OutputStream out) throws IOException;
 }

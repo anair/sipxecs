@@ -9,6 +9,8 @@
  */
 package org.sipfoundry.sipxconfig.device;
 
+import java.io.OutputStream;
+
 public interface ProfileGenerator {
     void copy(ProfileLocation location, String inputFileName, String outputFileName);
 
@@ -16,4 +18,7 @@ public interface ProfileGenerator {
 
     void generate(ProfileLocation location, ProfileContext context, ProfileFilter filter,
             String outputFileName);
+
+    OutputStream getGeneratedProfile(ProfileLocation location, ProfileContext context, ProfileFilter profileFilter,
+            String name);
 }

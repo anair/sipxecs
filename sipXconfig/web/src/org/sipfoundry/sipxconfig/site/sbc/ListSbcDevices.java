@@ -24,6 +24,7 @@ import org.apache.tapestry.valid.ValidatorException;
 import org.sipfoundry.sipxconfig.admin.dialplan.sbc.SbcDescriptor;
 import org.sipfoundry.sipxconfig.admin.dialplan.sbc.SbcDevice;
 import org.sipfoundry.sipxconfig.admin.dialplan.sbc.SbcDeviceManager;
+import org.sipfoundry.sipxconfig.admin.dialplan.sbc.bridge.BridgeSbc;
 import org.sipfoundry.sipxconfig.common.UserException;
 import org.sipfoundry.sipxconfig.components.ExtraOptionModelDecorator;
 import org.sipfoundry.sipxconfig.components.ObjectSelectionModel;
@@ -95,8 +96,22 @@ public abstract class ListSbcDevices extends BasePage {
     }
 
     public void delete() {
-        Collection<Integer> ids = getSelections().getAllSelected();
+        Collection<Integer> ids = new ArrayList<Integer>(getSelections().getAllSelected());
         if (!ids.isEmpty()) {
+            Boolean printErrorMessage = false;
+            // do not delete internal SBCs
+            for (Iterator<Integer> iterator = ids.iterator(); iterator.hasNext();) {
+                Integer id = iterator.next();
+                if (getSbcDeviceManager().getSbcDevice(id) instanceof BridgeSbc) {
+                    printErrorMessage = true;
+                    iterator.remove();
+                }
+            }
+            if (printErrorMessage) {
+                IValidationDelegate validator = TapestryUtils.getValidator(getPage());
+                validator.record(new ValidatorException(getMessages().getMessage(
+                        "msg.error.internalSbcDeletion")));
+            }
             getSbcDeviceManager().deleteSbcDevices(ids);
         }
     }

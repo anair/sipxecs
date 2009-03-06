@@ -24,7 +24,10 @@ import org.sipfoundry.sipxconfig.common.UserException;
 import org.sipfoundry.sipxconfig.common.event.DaoEventListener;
 import org.sipfoundry.sipxconfig.common.event.DaoEventPublisher;
 import org.sipfoundry.sipxconfig.common.event.SbcDeviceDeleteListener;
+import org.sipfoundry.sipxconfig.service.ServiceConfigurator;
+import org.sipfoundry.sipxconfig.service.SipxBridgeService;
 import org.sipfoundry.sipxconfig.service.SipxServiceBundle;
+import org.sipfoundry.sipxconfig.service.SipxServiceManager;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.annotation.Required;
@@ -46,7 +49,11 @@ public abstract class SbcDeviceManagerImpl extends SipxHibernateDaoSupport<SbcDe
 
     private SipxServiceBundle m_borderControllerBundle;
 
+    private SipxServiceManager m_sipxServiceManager;
+
     private SbcDescriptor m_sipXbridgeSbcModel;
+
+    private ServiceConfigurator m_serviceConfigurator;
 
     @Required
     public void setBorderControllerBundle(SipxServiceBundle borderControllerBundle) {
@@ -56,6 +63,16 @@ public abstract class SbcDeviceManagerImpl extends SipxHibernateDaoSupport<SbcDe
     @Required
     public void setSipXbridgeSbcModel(SbcDescriptor sipXbridgeSbcModel) {
         m_sipXbridgeSbcModel = sipXbridgeSbcModel;
+    }
+
+    @Required
+    public void setSipxServiceManager(SipxServiceManager sipxServiceManager) {
+        m_sipxServiceManager = sipxServiceManager;
+    }
+
+    @Required
+    public void setServiceConfigurator(ServiceConfigurator serviceConfigurator) {
+        m_serviceConfigurator = serviceConfigurator;
     }
 
     public void setDaoEventPublisher(DaoEventPublisher daoEventPublisher) {
@@ -108,6 +125,10 @@ public abstract class SbcDeviceManagerImpl extends SipxHibernateDaoSupport<SbcDe
             }
         }
         return null;
+    }
+
+    public List<BridgeSbc> getBridgeSbcs() {
+        return getSbcDeviceByType(BridgeSbc.class);
     }
 
     private <T> List<T> getSbcDeviceByType(final Class<T> type) {
@@ -177,6 +198,10 @@ public abstract class SbcDeviceManagerImpl extends SipxHibernateDaoSupport<SbcDe
         // Replicate occurs only when updating sbc device
         if (!isNew) {
             getDialPlanActivationManager().replicateDialPlan(true);
+            if (sbc instanceof BridgeSbc) {
+                m_serviceConfigurator.replicateServiceConfig(((BridgeSbc) sbc).getLocation(), 
+                        m_sipxServiceManager.getServiceByBeanId(SipxBridgeService.BEAN_ID));
+            }
         }
     }
 
@@ -252,13 +277,14 @@ public abstract class SbcDeviceManagerImpl extends SipxHibernateDaoSupport<SbcDe
     public void onSave(Object entity) {
         if (entity instanceof Location) {
             Location location = (Location) entity;
-            if (location.isBundleInstalled(m_borderControllerBundle.getModelId())
-                    && null == getBridgeSbc(location.getAddress())) {
-                SbcDevice sipXbridgeSbc = newSbcDevice(m_sipXbridgeSbcModel);
-                sipXbridgeSbc.setAddress(location.getAddress());
-                sipXbridgeSbc.setName("sipXbridge-" + location.getId().toString());
-                sipXbridgeSbc.setDescription("Internal SBC on " + location.getFqdn());
-                storeSbcDevice(sipXbridgeSbc);
+            if (location.isBundleInstalled(m_borderControllerBundle.getModelId())) {
+                if (null == getBridgeSbc(location.getAddress())) {
+                    SbcDevice sipXbridgeSbc = newSbcDevice(m_sipXbridgeSbcModel);
+                    sipXbridgeSbc.setAddress(location.getAddress());
+                    sipXbridgeSbc.setName("sipXbridge-" + location.getId().toString());
+                    sipXbridgeSbc.setDescription("Internal SBC on " + location.getFqdn());
+                    storeSbcDevice(sipXbridgeSbc);
+                }
             } else if (null != getBridgeSbc(location.getAddress())) {
                 deleteSbcDevice(getBridgeSbc(location.getAddress()).getId());
             }

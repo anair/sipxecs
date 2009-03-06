@@ -9,6 +9,8 @@
  */
 package org.sipfoundry.sipxconfig.device;
 
+import java.io.OutputStream;
+
 /**
  * Encapsulates the details of creating a profile/configuration file. Default implementation
  * creates context and filter by consulting device. If device generates additional profiles it
@@ -51,6 +53,16 @@ public class Profile {
         if (context != null) {
             generator.generate(location, context, profileFilter, getName());
         }
+    }
+
+    public final OutputStream getGeneratedProfile(Device device, ProfileLocation location) {
+        ProfileGenerator generator = device.getProfileGenerator();
+        ProfileFilter profileFilter = createFilter(device);
+        ProfileContext context = createContext(device);
+        if (context != null) {
+            return generator.getGeneratedProfile(location, context, profileFilter, getName());
+        }
+        return null;
     }
 
     protected ProfileContext createContext(Device device) {
