@@ -85,6 +85,7 @@
     <property name="serviceConfigurator" ref="serviceConfigurator" />
     <property name="pagingContext" ref="pagingContext" />
     <property name="sbcManager" ref="sbcManager" />
+    <property name="defaultSystemFirmwareInstall" ref="defaultSystemFirmwareInstall" />
   </bean>
 
   <bean id="exportCsv" class="org.sipfoundry.sipxconfig.admin.ExportCsv">

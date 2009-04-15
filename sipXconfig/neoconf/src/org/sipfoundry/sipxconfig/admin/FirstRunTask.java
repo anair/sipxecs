@@ -26,6 +26,7 @@ import org.sipfoundry.sipxconfig.paging.PagingContext;
 import org.sipfoundry.sipxconfig.phone.PhoneContext;
 import org.sipfoundry.sipxconfig.service.ServiceConfigurator;
 import org.sipfoundry.sipxconfig.service.SipxServiceManager;
+import org.sipfoundry.sipxconfig.upload.DefaultSystemFirmwareInstall;
 import org.springframework.beans.factory.annotation.Required;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
@@ -48,6 +49,7 @@ public class FirstRunTask implements ApplicationListener {
     private LocationsManager m_locationsManager;
     private PagingContext m_pagingContext;
     private SbcManager m_sbcManager;
+    private DefaultSystemFirmwareInstall m_defaultSystemFirmwareInstall;
 
     public void runTask() {
         LOG.info("Executing first run tasks...");
@@ -65,6 +67,8 @@ public class FirstRunTask implements ApplicationListener {
 
         enforceRoles();
         generateAllProfiles();
+
+        m_defaultSystemFirmwareInstall.installAvailableFirmwares();
     }
 
     /**
@@ -195,5 +199,10 @@ public class FirstRunTask implements ApplicationListener {
     @Required
     public void setSbcManager(SbcManager sbcManager) {
         m_sbcManager = sbcManager;
+    }
+
+    @Required
+    public void setDefaultSystemFirmwareInstall(DefaultSystemFirmwareInstall defaultSystemFirmwareInstall) {
+        m_defaultSystemFirmwareInstall = defaultSystemFirmwareInstall;
     }
 }
