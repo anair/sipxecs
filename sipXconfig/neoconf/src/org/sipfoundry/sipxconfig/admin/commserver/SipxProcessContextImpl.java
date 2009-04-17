@@ -21,6 +21,7 @@ import org.apache.commons.collections.Factory;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.sipfoundry.sipxconfig.admin.dialplan.DialPlanActivationManager;
 import org.sipfoundry.sipxconfig.common.UserException;
 import org.sipfoundry.sipxconfig.service.LocationSpecificService;
 import org.sipfoundry.sipxconfig.service.SipxService;
@@ -41,7 +42,9 @@ public class SipxProcessContextImpl implements SipxProcessContext, ApplicationLi
     private LocationsManager m_locationsManager;
     private ApiProvider<ProcessManagerApi> m_processManagerApiProvider;
     private SipxServiceManager m_sipxServiceManager;
+    private DialPlanActivationManager m_dialPlanActivationManager;
     private RestartNeededState m_servicesToRestart = new RestartNeededState();
+    private Set<String> m_replicateDialPlanBeforeRestartThisService = new HashSet<String>();
 
     @Required
     public void setLocationsManager(LocationsManager locationsManager) {
@@ -58,12 +61,25 @@ public class SipxProcessContextImpl implements SipxProcessContext, ApplicationLi
         m_sipxServiceManager = sipxServiceManager;
     }
 
+    @Required
+    public void setDialPlanActivationManager(DialPlanActivationManager dialPlanActivationManager) {
+        m_dialPlanActivationManager = dialPlanActivationManager;
+    }
+
     public boolean needsRestart(Location location, SipxService service) {
         return m_servicesToRestart.isMarked(location, service);
     }
 
     public boolean needsRestart() {
         return !m_servicesToRestart.isEmpty();
+    }
+
+    public void addReplicateDialPlanBeforeRestartThisService(String serviceBeanId) {
+        m_replicateDialPlanBeforeRestartThisService.add(serviceBeanId);
+    }
+
+    public void clearReplicateDialPlanBeforeRestartThisService() {
+        m_replicateDialPlanBeforeRestartThisService.clear();
     }
 
     /**
@@ -173,13 +189,21 @@ public class SipxProcessContextImpl implements SipxProcessContext, ApplicationLi
         try {
             String[] processNames = new String[processes.size()];
             int i = 0;
+            boolean replicateDialPlanBeforeRestart = false;
             for (SipxService process : processes) {
                 processNames[i++] = process.getProcessName();
+                if (m_replicateDialPlanBeforeRestartThisService.contains(process.getBeanId())) {
+                    replicateDialPlanBeforeRestart = true;
+                    clearReplicateDialPlanBeforeRestartThisService();
+                }
             }
 
             ProcessManagerApi api = m_processManagerApiProvider.getApi(location.getProcessMonitorUrl());
             switch (command) {
             case RESTART:
+                if (replicateDialPlanBeforeRestart) {
+                    m_dialPlanActivationManager.replicateDialPlanNow(false);
+                }
                 api.restart(getHost(), processNames, true);
                 break;
             case START:

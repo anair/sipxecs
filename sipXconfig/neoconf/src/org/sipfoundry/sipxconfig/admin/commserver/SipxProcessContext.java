@@ -93,4 +93,15 @@ public interface SipxProcessContext {
      * Used in test only: clears the need for restart status
      */
     void clear();
+
+    /**
+     * Replicate the dialplan before restarting this service
+     * @param the sipxservice beanId
+     */
+    void addReplicateDialPlanBeforeRestartThisService(String beanId);
+
+    /**
+     * Clear the list of services that will trigger a dial plan replication before restarting
+     */
+    void clearReplicateDialPlanBeforeRestartThisService();
 }

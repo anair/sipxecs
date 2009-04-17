@@ -57,6 +57,12 @@ public abstract class EagerDialPlanActivationManager implements BeanFactoryAware
     public abstract ProfileManager getGatewayProfileManager();
 
     public void replicateDialPlan(boolean restartSbcDevices) {
+        replicateDialPlanNow(restartSbcDevices);
+        m_sipxProcessContext.clearReplicateDialPlanBeforeRestartThisService();
+        markAffectedServicesForRestart(false);
+    }
+
+    public void replicateDialPlanNow(boolean restartSbcDevices) {
         for (Location location : m_locationsManager.getLocations()) {
             ConfigGenerator generator = generateDialPlan();
             generator.activate(location, m_sipxReplicationContext);
@@ -66,6 +72,22 @@ public abstract class EagerDialPlanActivationManager implements BeanFactoryAware
 
         pushAffectedProfiles(restartSbcDevices);
         notifyOnDialPlanGeneration();
+    }
+
+    /**
+     * Mark the relevant services for restart
+     */
+    public void markAffectedServicesForRestart(boolean replicateDialPlanBeforeRestart) {
+        SipxService proxy = m_sipxServiceManager.getServiceByBeanId(SipxProxyService.BEAN_ID);
+        SipxService registrar = m_sipxServiceManager.getServiceByBeanId(SipxRegistrarService.BEAN_ID);
+
+        if (replicateDialPlanBeforeRestart) {
+            m_sipxProcessContext.addReplicateDialPlanBeforeRestartThisService(proxy.getBeanId());
+            m_sipxProcessContext.addReplicateDialPlanBeforeRestartThisService(registrar.getBeanId());
+        }
+
+        // mark services for restart - a reminder will be shown to the user
+        m_sipxProcessContext.markServicesForRestart(Arrays.asList(proxy, registrar));
     }
 
     ConfigGenerator generateDialPlan() {
@@ -85,10 +107,6 @@ public abstract class EagerDialPlanActivationManager implements BeanFactoryAware
      */
     private void notifyOnDialPlanGeneration() {
         m_sipxReplicationContext.publishEvent(new DialPlanActivatedEvent(this));
-        SipxService proxy = m_sipxServiceManager.getServiceByBeanId(SipxProxyService.BEAN_ID);
-        SipxService registrar = m_sipxServiceManager.getServiceByBeanId(SipxRegistrarService.BEAN_ID);
-        // mark services for restart - a reminder will be shown to the user
-        m_sipxProcessContext.markServicesForRestart(Arrays.asList(proxy, registrar));
     }
 
     /**

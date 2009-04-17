@@ -26,6 +26,8 @@ public class LazyDialPlanActivationManagerTestIntegration extends TestCase {
         expectLastCall().once();
         target.replicateDialPlan(false);
         expectLastCall().once();
+        target.markAffectedServicesForRestart(true);
+        expectLastCall().times(6);
         replay(target);
 
         LazyDialPlanActivationManager dpam = new LazyDialPlanActivationManager();

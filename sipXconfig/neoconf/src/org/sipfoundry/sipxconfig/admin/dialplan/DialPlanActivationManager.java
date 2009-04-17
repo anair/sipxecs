@@ -11,4 +11,6 @@ package org.sipfoundry.sipxconfig.admin.dialplan;
 
 public interface DialPlanActivationManager {
     public abstract void replicateDialPlan(boolean restartSbcDevices);
+    public abstract void replicateDialPlanNow(boolean restartSbcDevices);
+    public abstract void markAffectedServicesForRestart(boolean replicateDialPlanBeforeRestart);
 }

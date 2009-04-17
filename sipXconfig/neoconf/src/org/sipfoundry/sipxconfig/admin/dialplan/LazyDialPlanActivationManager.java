@@ -18,9 +18,9 @@ public class LazyDialPlanActivationManager implements DialPlanActivationManager 
     private static final Log LOG = LogFactory.getLog(LazyDialPlanActivationManager.class);
 
     /**
-     * 15s is the default sleep interval after any replication request is issued
+     * 30s is the default sleep interval after any replication request is issued
      */
-    private static final int DEFAULT_SLEEP_INTERVAL = 15000;
+    private static final int DEFAULT_SLEEP_INTERVAL = 30000;
 
     private int m_sleepInterval = DEFAULT_SLEEP_INTERVAL;
 
@@ -35,7 +35,19 @@ public class LazyDialPlanActivationManager implements DialPlanActivationManager 
     public synchronized void replicateDialPlan(boolean restartSbcDevices) {
         m_replicate = true;
         m_restart = m_restart || restartSbcDevices;
+        markAffectedServicesForRestart(true);
         notifyWorker();
+    }
+
+    public void replicateDialPlanNow(boolean restartSbcDevices) {
+        if (getReplicate()) {
+            boolean restart = getRestart() || restartSbcDevices;
+            m_target.replicateDialPlanNow(restart);
+        }
+    }
+
+    public void markAffectedServicesForRestart(boolean replicateDialPlanBeforeRestart) {
+        m_target.markAffectedServicesForRestart(replicateDialPlanBeforeRestart);
     }
 
     public void init() {
@@ -59,9 +71,14 @@ public class LazyDialPlanActivationManager implements DialPlanActivationManager 
 
     private synchronized boolean getRestart() {
         boolean restart = m_restart;
-        m_replicate = false;
         m_restart = false;
         return restart;
+    }
+
+    private synchronized boolean getReplicate() {
+        boolean replicate = m_replicate;
+        m_replicate = false;
+        return replicate;
     }
 
     /**
@@ -79,8 +96,10 @@ public class LazyDialPlanActivationManager implements DialPlanActivationManager 
 
         @Override
         protected boolean work() {
-            boolean restart = getRestart();
-            m_target.replicateDialPlan(restart);
+            if (getReplicate()) {
+                boolean restart = getRestart();
+                m_target.replicateDialPlan(restart);
+            }
             return true;
         }
     }
