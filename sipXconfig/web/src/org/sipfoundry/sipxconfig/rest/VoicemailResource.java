@@ -129,6 +129,14 @@ public class VoicemailResource extends UserResource {
         m_mailboxManager = mailboxManager;
     }
 
+    public MailboxManager getMailboxManager() {
+        return m_mailboxManager;
+    }
+
+    public String getFolder() {
+        return m_folder;
+    }
+
     private static String joinUrl(String... items) {
         return join(items, "/");
     }

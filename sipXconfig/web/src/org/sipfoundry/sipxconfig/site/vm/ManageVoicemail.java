@@ -210,11 +210,8 @@ public abstract class ManageVoicemail extends UserBasePage implements IExternalP
 
     public String getVoicemailLink() {
         Voicemail voicemail = getVoicemail();
-        PlayVoicemailService.Info info = new PlayVoicemailService.Info(voicemail.getFolderId(), voicemail
-                .getMessageId());
-        PlayVoicemailService.Info[] infos = new PlayVoicemailService.Info[1];
-        infos[0] = info;
-        return getPlayVoicemailService().getLink(false, infos).getURL();
+        return "/sipxconfig/rest/my/voicemail/download/" + voicemail.getFolderId() + '/'
+            + voicemail.getMessageId() + ".wav";
     }
 
     @Override
